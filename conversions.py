@@ -11,7 +11,7 @@ def cartesian_to_spherical(P: np.ndarray):
     x, y, z = P_norm[..., 0:1], P_norm[..., 1:2], P_norm[..., 2:]
     # phi = arctan(x/z)
     # theta = arcsin(y)
-    theta, phi = np.arctan2(x, z), np.arcsin(y)
+    phi, theta = np.arctan2(x, z), np.arcsin(y)
 
     # rimetti insieme i punti in coordinate sferiche
     return np.concatenate([phi, theta], axis=-1)
