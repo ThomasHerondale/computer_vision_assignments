@@ -21,7 +21,7 @@ def rotation_matrix(axis: Literal['x', 'y'], theta: np.float32):
             [-s, 0, c]
         ])
     else:
-        raise ValueError('Asse sbagliato coglione')
+        raise ValueError('Invalid axis')
 
 
 def load_img(fname: str):
@@ -64,9 +64,38 @@ def to_equirectangular(img: np.ndarray, FOV, theta, phi, img_size: Tuple):
     return cv2.remap(img, T[..., 0], T[..., 1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_WRAP)
 
 
+def browse_video(fname: str, FOV, height, width):
+    long = 0
+    lat = 0
+    tick = 0.2
+    video = cv2.VideoCapture(fname)
+    if video is None or not video.isOpened():
+        raise IOError('Video could not be opened.')
+    ret, frame = video.read()
+    while ret:
+        ret, frame = video.read()
+        frame = to_equirectangular(
+            frame,
+            FOV,
+            theta=long,
+            phi=lat,
+            img_size=(height, width)
+            )
+        cv2.imshow('Video', frame)
+        keypress = cv2.waitKey(25)
+        if keypress == ord('q'):
+            break
+        elif keypress == ord('s'):
+            lat += tick
+        elif keypress == ord('w'):
+            lat -= tick
+        elif keypress == ord('a'):
+            long += tick
+        elif keypress == ord('d'):
+            long -= tick
+    video.release()
+    cv2.destroyAllWindows()
+
+
 if __name__ == '__main__':
-    img1, shape = load_img('data/video_1.MP4')
-    img2 = to_equirectangular(img1, 60, 0, 0, (720, 1080))
-    print(img2.shape)
-    cv2.imshow('img2', img2)
-    cv2.waitKey(0)
+    browse_video('data/video_2.MP4', 60, 720, 1080)
