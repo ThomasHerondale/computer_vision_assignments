@@ -21,8 +21,9 @@ def spherical_to_img(P: np.ndarray, img_size: Tuple):
     theta, phi = P[..., 0:1], P[..., 1:]
 
     # U \in [0, 1] V \in [0,1], quindi normalizziamo
-    U = (theta / 2 * np.pi + 0.5) * (img_size[1] - 1)     # -1 per non "uscire fuori" dall'immagine
+    U = (theta / (2 * np.pi) + 0.5) * (img_size[1] - 1)     # -1 per non "uscire fuori" dall'immagine
     V = (phi / np.pi + 0.5) * (img_size[0] - 1)
 
     return np.concatenate([U, V], axis=-1)
+
 
