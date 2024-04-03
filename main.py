@@ -33,36 +33,40 @@ def load_img(fname: str):
 
 
 def to_equirectangular(img: np.ndarray, FOV, theta, phi, img_size: Tuple):
-    H = np.tan(FOV / 2)
-    W = np.tan(FOV / 2)
+    H = np.tan(np.radians(FOV / 2.0))
+    W = np.tan(np.radians(FOV / 2.0))
+
+    #H, W = img_size[0], img_size[1]
 
     # genera i punti del piano dell'immagine
     u = (np.linspace(
         -W,
         W,
-        num=img_size[1],
-        dtype=np.int32))
+        num=img_size[1]))
     v = (np.linspace(
         -H,
         H,
-        num=img_size[0],
-        dtype=np.int32))
-
-    P = np.ones((*img_size, 3), dtype=np.float32)
-    print(np.stack(np.meshgrid(u, -v), axis=-1).shape)
-    P[:, :2] = np.stack(np.meshgrid(u, -v), axis=-1)
-
+        num=img_size[0]))
+    # P = np.ones((*img_size, 3), dtype=np.float32)
+    # print(f'P: {P.shape}')
+    # print(f'Other: {np.stack(np.meshgrid(u, -v), axis=-1).shape}')
+    # P[:, :, :2] = np.stack(np.meshgrid(u, -v), axis=-1)
+    u, v = np.meshgrid(u, v)
+    w = np.ones_like(u)
+    P = np.concatenate([u[..., None], v[..., None], w[..., None]], axis=-1)
     R_x = rotation_matrix('x', phi)
     R_y = rotation_matrix('y', theta)
     P = P @ R_x @ R_y
 
     Q = cartesian_to_spherical(P)
-    T = spherical_to_img(Q, (H, W))
+    T = spherical_to_img(Q, img.shape).astype(np.float32)
 
-    return cv2.remap(img, T[:, 0], T[:, 1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_WRAP)
+    return cv2.remap(img, T[..., 0], T[..., 1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_WRAP)
 
 
 if __name__ == '__main__':
     img1, shape = load_img('data/video_1.MP4')
-    img2 = to_equirectangular(img1, 60, 0, 0, (shape[0], shape[1]))
+    img2 = to_equirectangular(img1, 60, 0, 0, (720, 1080))
+    print(img2.shape)
     cv2.imshow('img2', img2)
+    cv2.waitKey(0)
