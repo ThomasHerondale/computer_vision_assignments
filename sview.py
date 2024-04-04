@@ -162,6 +162,7 @@ if __name__ == '__main__':
     args = parse_args()
     if args['ftype'] == 'video':
         browse_video(args)
-
+    elif args['ftype'] == 'image':
+        browse_image(args)
 
 
