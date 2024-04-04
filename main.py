@@ -96,6 +96,52 @@ def browse_video(fname: str, FOV, height, width):
     video.release()
     cv2.destroyAllWindows()
 
+def browse_img(file_path: str, FOV, height: int, width: int):
+    long = 0
+    lat = 0
+    tick = 0.2
+    img = cv2.imread(file_path)
+    if img is None:
+        raise IOError('Image could not be opened.')
+    else:
+        while True:
+            img = cv2.imread(file_path)
+            img = to_equirectangular(
+                img,
+                FOV,
+                theta=long,
+                phi=lat,
+                img_size=(height, width)
+            )
+            cv2.imshow("Immagine", img)
+            keypress = cv2.waitKey(0)
+            if keypress == ord('q'):
+                break
+            elif keypress == ord('s'):
+                lat += tick
+            elif keypress == ord('w'):
+                lat -= tick
+            elif keypress == ord('a'):
+                long += tick
+            elif keypress == ord('d'):
+                long -= tick
+            cv2.destroyAllWindows()
+
+# Sarà necessario un metodo per stabilire se l'oggetto passato è un video o un immagine
+def file_path_type(file_path:str, FOV, height, width):
+    img = cv2.imread(file_path)
+    video = cv2.VideoCapture(file_path)
+    if img is not None:
+        # viene invocato il metodo che permette di operare sull'imagine
+        browse_img(file_path, FOV, height, width)
+    elif video.isOpened():
+        browse_video(file_path, FOV, height, width)
+    else:
+        print("Errore")
 
 if __name__ == '__main__':
-    browse_video('data/video_2.MP4', 60, 720, 1080)
+    print(" "*10 + "\tWelcome to Tool for navigating 360° images\t" + " "*10)
+    file_path = input("Inserire il percorso file dell'immagine o del video:  \n")
+    FOV = int(input("Inserire il Fov: ")) #FOV deve essere float?
+    file_path_type(file_path.strip(), FOV, 720, 1080)
+    #browse_video(file_path.strip(), FOV, 720, 1080)
