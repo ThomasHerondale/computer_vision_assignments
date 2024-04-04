@@ -71,6 +71,7 @@ def parse_filename(fname: str) -> Literal['image', 'video']:
     if img is not None:
         return 'image'
     elif video.isOpened():
+        video.release()
         return 'video'
     else:
         raise FileNotFoundError(f'Could not find image or video at path {fname}')
