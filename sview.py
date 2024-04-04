@@ -18,7 +18,12 @@ def parse_args():
     parser = argparse.ArgumentParser(
         prog='Spherical viewer',
         description='This program allows you to visualize and explore '
-                    'spherical images and videos.'
+                    'spherical images and videos. '
+                    'Once in the viewer, you can use your keyboard to interact: '
+                    ' - Use W and S to adjust latitude, i.e. move camera up/down'
+                    ' - Use A and D to adjust longitude, i.e. move camera left/right'
+                    ' - Use X and Z to zoom in/out'
+                    ' - Use Q to close the viewer'
     )
     parser.add_argument(
         'filename',
