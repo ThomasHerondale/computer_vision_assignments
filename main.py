@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 from conversions import cartesian_to_spherical, spherical_to_img
 
-
 def rotation_matrix(axis: Literal['x', 'y'], theta: np.float32):
     s = np.sin(theta)
     c = np.cos(theta)
@@ -23,14 +22,12 @@ def rotation_matrix(axis: Literal['x', 'y'], theta: np.float32):
     else:
         raise ValueError('Invalid axis')
 
-
 def load_img(fname: str):
     video = cv2.VideoCapture(fname)
     if video is None or not video.isOpened():
         raise IOError('Video could not be opened.')
     ret, frame = video.read()
     return frame, frame.shape
-
 
 def to_equirectangular(img: np.ndarray, FOV, theta, phi, img_size: Tuple):
     H = np.tan(np.radians(FOV / 2.0))
@@ -47,22 +44,15 @@ def to_equirectangular(img: np.ndarray, FOV, theta, phi, img_size: Tuple):
         -H,
         H,
         num=img_size[0]))
-    # P = np.ones((*img_size, 3), dtype=np.float32)
-    # print(f'P: {P.shape}')
-    # print(f'Other: {np.stack(np.meshgrid(u, -v), axis=-1).shape}')
-    # P[:, :, :2] = np.stack(np.meshgrid(u, -v), axis=-1)
     u, v = np.meshgrid(u, v)
     w = np.ones_like(u)
     P = np.concatenate([u[..., None], v[..., None], w[..., None]], axis=-1)
     R_x = rotation_matrix('x', phi)
     R_y = rotation_matrix('y', theta)
     P = P @ R_x @ R_y
-
     Q = cartesian_to_spherical(P)
     T = spherical_to_img(Q, img.shape).astype(np.float32)
-
     return cv2.remap(img, T[..., 0], T[..., 1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_WRAP)
-
 
 def browse_video(fname: str, FOV, height, width):
     long = 0
@@ -93,9 +83,12 @@ def browse_video(fname: str, FOV, height, width):
             long += tick
         elif keypress == ord('d'):
             long -= tick
+        elif keypress == ord('z') and FOV < 85:
+            FOV += 2
+        elif keypress == ord('x') and FOV > 13:
+            FOV -= 2
     video.release()
     cv2.destroyAllWindows()
 
-
 if __name__ == '__main__':
-    browse_video('data/video_2.MP4', 60, 720, 1080)
+    browse_video('video_1.MP4', 60, 720, 1080)
