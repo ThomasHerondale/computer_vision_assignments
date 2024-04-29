@@ -4,6 +4,7 @@ import subprocess
 import random
 import svm
 import numpy as np
+from sklearn.utils import shuffle
 def filter(image) :
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
@@ -116,11 +117,12 @@ negative_descriptors = []
 for img in negative_images:
     negative_descriptors.append(hog.compute(img))
     n_negative.append(-1) # vettore contenente l'etichetta dei negativi (label=1)
-print(type(positive_images))
-print(positive_descriptors)
 array = []
-x = np.concatenate((positive_images, negative_images), axis=0)
+x = np.concatenate((positive_descriptors, negative_descriptors), axis=0)
 y = np.concatenate((n_positive, n_negative), axis=0)
 print(x)
 print(y)
-svm.svm_classifier(x, y)
+x, y = shuffle(x, y)
+print("-------------------------------------")
+print(x)
+print(y)

@@ -15,5 +15,7 @@ def svm_classifier(x: list[Sequence[float]], y: list[int], c=0.1):
     """
     clf = LinearSVC(C=c, dual=True)
     clf.fit(x, y)
-    clf.score(x, y)
+    print(clf.score(x, y))
     return clf
+
+
