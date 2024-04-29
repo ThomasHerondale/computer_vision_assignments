@@ -94,4 +94,12 @@ path_positive_imgs = "/Users/antoninocentonze/Desktop/assigment_2/WiderPerson/Im
 path_positive_annotations = "/Users/antoninocentonze/Desktop/assigment_2/WiderPerson/Annotations"
 path_negative_imgs ="/Users/antoninocentonze/Desktop/assigment_2/test_neg"
 # Carica il training set
-data_preparation(path_positive_txt, path_positive_imgs, path_positive_annotations, path_negative_imgs)
+positive_images, negative_images = data_preparation(path_positive_txt, path_positive_imgs, path_positive_annotations, path_negative_imgs)
+#estrazione delle features
+hog = cv2.HOGDescriptor()
+positive_descriptors = []
+for img in positive_images:
+    positive_descriptors.append(hog.compute(img))
+negative_descriptors = []
+for img in negative_images:
+    negative_descriptors.append(hog.compute(img))
