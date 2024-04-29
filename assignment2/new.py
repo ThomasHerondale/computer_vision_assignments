@@ -108,9 +108,10 @@ def crop_on_bbox(img, bbox: list, size=(64, 128)):
 def build_dataset():
     fnames = read_pos_images_list(os.environ['TRAIN_ASSIGNMENT_TXT_PATH'], 10)
     bboxes = read_bboxes(fnames, os.environ['ANNOTATIONS_PATH'])
-    imgs = read_pos_images(fnames, os.environ['IMAGES_PATH'])
-
+    imgs = read_pos_images(fnames, os.environ['POS_IMAGES_PATH'])
     pos_samples = build_pos_samples(imgs, bboxes)
-    neg_samples = build_neg_samples(fnames, os.environ['IMAGES_PATH'], 5)
+
+    fnames = build_neg_images_list(os.environ['NEG_IMAGES_PATH'], 10)
+    neg_samples = build_neg_samples(fnames, os.environ['NEG_IMAGES_PATH'], 5)
 
     return pos_samples, neg_samples
