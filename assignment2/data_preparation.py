@@ -2,6 +2,7 @@ import cv2
 import os
 import subprocess
 import random
+import svm
 import numpy as np
 def data_preparation(path_positive_txt, path_positive_imgs, path_positive_annotations,
                      path_negative_imgs):
@@ -89,17 +90,30 @@ def data_preparation(path_positive_txt, path_positive_imgs, path_positive_annota
             crop_negative_imgs.append(resized)
     return crop_positive_imgs, crop_negative_imgs
 
-path_positive_txt = "/Users/antoninocentonze/Desktop/assigment_2/train_assignment.txt"
-path_positive_imgs = "/Users/antoninocentonze/Desktop/assigment_2/WiderPerson/Images"
-path_positive_annotations = "/Users/antoninocentonze/Desktop/assigment_2/WiderPerson/Annotations"
-path_negative_imgs ="/Users/antoninocentonze/Desktop/assigment_2/test_neg"
+path_positive_txt = "/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/split_positive/train_assignment.txt"
+path_positive_imgs = "/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/WiderPerson/Images"
+path_positive_annotations = "/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/WiderPerson/Annotations"
+path_negative_imgs ="/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/negative/train_neg"
 # Carica il training set
-positive_images, negative_images = data_preparation(path_positive_txt, path_positive_imgs, path_positive_annotations, path_negative_imgs)
+positive_images, negative_images = data_preparation(
+    path_positive_txt, path_positive_imgs, path_positive_annotations, path_negative_imgs)
 #estrazione delle features
 hog = cv2.HOGDescriptor()
 positive_descriptors = []
+n_positive = []
+n_negative = []
 for img in positive_images:
     positive_descriptors.append(hog.compute(img))
+    n_positive.append(1) # vettore contenente l'etichetta dei positivi (label=1)
 negative_descriptors = []
 for img in negative_images:
     negative_descriptors.append(hog.compute(img))
+    n_negative.append(-1) # vettore contenente l'etichetta dei negativi (label=1)
+print(type(positive_images))
+print(positive_descriptors)
+array = []
+x = np.concatenate((positive_images, negative_images), axis=0)
+y = np.concatenate((n_positive, n_negative), axis=0)
+print(x)
+print(y)
+svm.svm_classifier(x, y)
