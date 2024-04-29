@@ -4,6 +4,12 @@ import subprocess
 import random
 import svm
 import numpy as np
+def filter(image) :
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+    gy = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+    Mag = ((np.absolute(gx) + np.absolute(gy)) / 4).astype(np.uint8)
+    return Mag
 def data_preparation(path_positive_txt, path_positive_imgs, path_positive_annotations,
                      path_negative_imgs):
     positive_images=[]
@@ -19,6 +25,7 @@ def data_preparation(path_positive_txt, path_positive_imgs, path_positive_annota
             percorso_immagine = os.path.join(path_positive_imgs, nome_immagine)
             immagine = cv2.imread(percorso_immagine)
             if immagine is not None:
+                immagine = filter(immagine)
                 positive_images.append(immagine)
                 counter += 1
             else:
