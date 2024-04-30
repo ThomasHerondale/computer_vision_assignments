@@ -1,5 +1,6 @@
 import os
 import random
+from readenv import loads
 from typing import Literal
 
 import cv2
@@ -48,6 +49,8 @@ def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128), preproc: Lit
         for _ in range(k):
             bbox = random_bbox(img.shape[:2], bbox_size)
             sample = crop_on_bbox(img, bbox, bbox_size)
+            cv2.imshow("sample", sample)
+            cv2.waitKey(0)
             neg_samples.append(sample)
 
     return neg_samples
@@ -66,9 +69,15 @@ def build_pos_samples(imgs, bboxes):
 
 def random_bbox(img_shape, size=(64, 128)):
     h, w = img_shape
-    x = random.randint(0, w - size[0] + 1)
-    y = random.randint(0, h - size[1] + 1)
-    return [x, y, x + size[0], y + size[1]]
+    flag = True
+    while (flag) :
+        x_1 = random.randint(0, w - size[0] + 1)
+        y_1 = random.randint(0, h - size[1] + 1)
+        x_2 = random.randint(x_1, w-1)
+        y_2 = y_1 + 2 * x_2
+        if (y_2 < h) :
+            flag = False
+    return [x_1, y_1, x_2, y_2]
 
 
 def read_pos_images(img_fnames, imgs_dir, preproc: Literal['Sobel'] = None):
