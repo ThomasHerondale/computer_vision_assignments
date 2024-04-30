@@ -71,9 +71,14 @@ def build_pos_samples(imgs, bboxes):
 
 def random_bbox(img_shape, size=(64, 128)):
     h, w = img_shape
-    x = random.randint(0, w - size[0] + 1)
-    y = random.randint(0, h - size[1] + 1)
-    return [x, y, x + size[0], y + size[1]]
+    while True:
+        x_1 = random.randint(0, w - size[0] + 1)
+        y_1 = random.randint(0, h - size[1] + 1)
+        x_2 = random.randint(x_1, w - 1)
+        y_2 = y_1 + 2 * x_2
+        if y_2 < h:
+            break
+    return [x_1, y_1, x_2, y_2]
 
 
 def read_pos_images(img_fnames, imgs_dir, preproc: Literal['BW'] = 'BW'):
