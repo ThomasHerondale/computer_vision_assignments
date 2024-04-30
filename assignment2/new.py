@@ -1,3 +1,4 @@
+import logging
 import os
 import random
 import warnings
@@ -34,7 +35,8 @@ def build_neg_images_list(imgs_dir, limit=None):
         for fname in os.listdir(imgs_dir)
         if os.path.isfile(os.path.join(imgs_dir, fname))
     ]
-    return random.sample(img_fnames, limit)
+    limit = len(img_fnames) if limit is None else limit
+    return random.sample(population=img_fnames, k=limit)
 
 
 # k number of bboxes per img
@@ -76,8 +78,9 @@ def random_bbox(img_shape, size=(64, 128)):
         y_1 = random.randint(0, h - size[1] + 1)
         x_2 = random.randint(x_1, w - 1)
         y_2 = y_1 + 2 * x_2
-        if y_2 < h:
+        if y_2 < h and is_bbox_valid([x_1, y_1, x_2, y_2]):
             break
+
     return [x_1, y_1, x_2, y_2]
 
 
@@ -109,11 +112,23 @@ def read_bboxes(img_fnames, annotations_path):
                 if line.startswith('1'):
                     bbox = line.split()
                     bbox = [int(n) for n in bbox[1:]]
-                    if bbox:
+                    if is_bbox_valid(bbox):
                         img_bboxes.append(bbox)
+                    else:
+                        logging.info(f'bbox {bbox} malformed: skipping')
         bboxes.append(img_bboxes)
 
     return bboxes
+
+
+def is_bbox_valid(bbox):
+    # check if bbox is empty
+    if bbox:
+        # check bbox size
+        x1, y1, x2, y2 = bbox
+        return x1 != x2 and y1 != y2
+    else:
+        return False
 
 
 def crop_on_bbox(img, bbox: list, size=(64, 128)):
@@ -158,7 +173,6 @@ def build_dataset(pos_samples, neg_samples, size=None, cache=True):
     if cache:
         # join features and targets
         data = np.column_stack((X, y))
-        print(data.shape)
         cache_ndarray(data, 'descriptor_data.npy')
 
     return X, y
@@ -189,3 +203,7 @@ def cache_ndarray(arr, fname):
 
     # write to file
     np.save(file_path, arr)
+
+
+if __name__ == '__main__':
+    X, y = load_dataset(use_cache=True)
