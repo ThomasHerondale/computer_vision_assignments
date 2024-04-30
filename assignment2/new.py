@@ -1,9 +1,12 @@
 import os
 import random
-
-import readenv.loads
+from typing import Literal
 
 import cv2
+
+
+def preprocess(img):
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
 def read_pos_images_list(img_list_path, limit=None):
@@ -30,7 +33,7 @@ def build_neg_images_list(imgs_dir, limit=None):
 
 
 # k number of bboxes per img
-def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128)):
+def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128), preproc: Literal['Sobel'] = None):
     neg_samples = []
     for fname in img_fnames:
         img_path = os.path.join(imgs_dir, fname)
@@ -38,6 +41,9 @@ def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128)):
         img = cv2.imread(img_path)
         if img is None:
             raise IOError(f'Could not load image {fname}')
+
+        if preproc == 'Sobel':
+            img = preprocess(img)
 
         for _ in range(k):
             bbox = random_bbox(img.shape[:2], bbox_size)
@@ -65,16 +71,18 @@ def random_bbox(img_shape, size=(64, 128)):
     return [x, y, x + size[0], y + size[1]]
 
 
-def read_pos_images(img_fnames, imgs_dir):
+def read_pos_images(img_fnames, imgs_dir, preproc: Literal['Sobel'] = None):
     images = []
     for fname in img_fnames:
         img_path = os.path.join(imgs_dir, fname)
 
         img = cv2.imread(img_path)
-        if img is not None:
-            images.append(img)
-        else:
+        if img is None:
             raise IOError(f'Could not load image {fname}')
+
+        if preproc == 'Sobel':
+            img = preprocess(img)
+        images.append(img)
 
     return images
 
