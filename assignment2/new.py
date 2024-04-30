@@ -1,8 +1,13 @@
 import os
 import random
+import warnings
 from typing import Literal
 
 import cv2
+import numpy as np
+from sklearn.utils import shuffle
+
+from readenv import loads
 
 
 def preprocess(img):
@@ -33,7 +38,7 @@ def build_neg_images_list(imgs_dir, limit=None):
 
 
 # k number of bboxes per img
-def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128), preproc: Literal['Sobel'] = None):
+def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128), preproc: Literal['BW'] = 'BW'):
     neg_samples = []
     for fname in img_fnames:
         img_path = os.path.join(imgs_dir, fname)
@@ -42,7 +47,7 @@ def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128), preproc: Lit
         if img is None:
             raise IOError(f'Could not load image {fname}')
 
-        if preproc == 'Sobel':
+        if preproc == 'BW':
             img = preprocess(img)
 
         for _ in range(k):
@@ -71,7 +76,7 @@ def random_bbox(img_shape, size=(64, 128)):
     return [x, y, x + size[0], y + size[1]]
 
 
-def read_pos_images(img_fnames, imgs_dir, preproc: Literal['Sobel'] = None):
+def read_pos_images(img_fnames, imgs_dir, preproc: Literal['BW'] = 'BW'):
     images = []
     for fname in img_fnames:
         img_path = os.path.join(imgs_dir, fname)
@@ -80,7 +85,7 @@ def read_pos_images(img_fnames, imgs_dir, preproc: Literal['Sobel'] = None):
         if img is None:
             raise IOError(f'Could not load image {fname}')
 
-        if preproc == 'Sobel':
+        if preproc == 'BW':
             img = preprocess(img)
         images.append(img)
 
@@ -113,13 +118,69 @@ def crop_on_bbox(img, bbox: list, size=(64, 128)):
     return cv2.resize(cropped_img, size)
 
 
-def build_dataset():
-    fnames = read_pos_images_list(os.environ['TRAIN_ASSIGNMENT_TXT_PATH'], 10)
+def build_samples(n=None, neg_factor=5):
+    fnames = read_pos_images_list(os.environ['TRAIN_ASSIGNMENT_TXT_PATH'], n)
     bboxes = read_bboxes(fnames, os.environ['ANNOTATIONS_PATH'])
     imgs = read_pos_images(fnames, os.environ['POS_IMAGES_PATH'])
     pos_samples = build_pos_samples(imgs, bboxes)
 
-    fnames = build_neg_images_list(os.environ['NEG_IMAGES_PATH'], 10)
-    neg_samples = build_neg_samples(fnames, os.environ['NEG_IMAGES_PATH'], 5)
+    fnames = build_neg_images_list(os.environ['NEG_IMAGES_PATH'], n)
+    neg_samples = build_neg_samples(fnames, os.environ['NEG_IMAGES_PATH'], neg_factor)
 
     return pos_samples, neg_samples
+
+
+def build_dataset(pos_samples, neg_samples, size=None, cache=True):
+    hog = cv2.HOGDescriptor()
+    data = []
+    targets = []
+    for sample in pos_samples:
+        data.append(hog.compute(sample))
+        targets.append(1)
+    for sample in neg_samples:
+        data.append(hog.compute(sample))
+        targets.append(-1)
+
+    assert len(data) == len(targets), "Samples and targets should have same length."
+    # shuffle samples
+    data, targets = shuffle(data, targets)
+    # slice if desired size was specified
+    if size:
+        data, targets = data[:size], targets[:size]
+
+    X, y = np.array(data, dtype=np.float32), np.array(targets, dtype=np.float32)
+
+    if cache:
+        # join features and targets
+        data = np.column_stack((X, y))
+        print(data.shape)
+        cache_ndarray(data, 'descriptor_data.npy')
+
+    return X, y
+
+
+def load_dataset(use_cache=True, size=None) -> (np.ndarray, np.ndarray):
+    if use_cache:
+        dir_path = os.environ.get('CACHE_DIR_PATH')
+        file_path = os.path.join(dir_path, 'descriptor_data.npy')
+        if os.path.isfile(file_path):
+            if size is not None:
+                warnings.warn("Size can't be specified when loading dataset from cache, it's being ignored.")
+            data = np.load(file_path)
+            return data[:, :-1], data[:, -1]
+        else:
+            warnings.warn('Cache file not found. Rebuilding dataset from scratch...')
+
+    # if we didn't return, we didn't use cache -> rebuild dataset
+    pos_samples, neg_samples = build_samples(size)
+    return build_dataset(pos_samples, neg_samples, size, use_cache)
+
+
+def cache_ndarray(arr, fname):
+    dir_path = os.environ.get('CACHE_DIR_PATH')
+    if not os.path.isdir(dir_path):
+        os.makedirs(dir_path)
+    file_path = os.path.join(dir_path, fname)
+
+    # write to file
+    np.save(file_path, arr)
