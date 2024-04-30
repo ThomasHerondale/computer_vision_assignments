@@ -1,128 +1,125 @@
-import cv2
 import os
-import subprocess
 import random
-import svm
-import numpy as np
-from sklearn.utils import shuffle
-def filter(image) :
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-    gy = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-    Mag = ((np.absolute(gx) + np.absolute(gy)) / 4).astype(np.uint8)
-    return Mag
-def data_preparation(path_positive_txt, path_positive_imgs, path_positive_annotations,
-                     path_negative_imgs):
-    positive_images=[]
-    name_positive_images=[]
-    with open(path_positive_txt, 'r') as file:
-        counter = 0
-        for riga in file:
-            if (counter > 10):
-                break
-            nome_immagine = riga.strip()
-            nome_immagine +=".jpg"
-            name_positive_images.append(nome_immagine + ".txt")
-            percorso_immagine = os.path.join(path_positive_imgs, nome_immagine)
-            immagine = cv2.imread(percorso_immagine)
-            if immagine is not None:
-                immagine = filter(immagine)
-                positive_images.append(immagine)
-                counter += 1
-            else:
-                print(f"Impossibile caricare l'immagine: {nome_immagine}")
-    file.close()
-    bbox_positive = []
-    for name_positive_image in name_positive_images:
-        img_bbox = []
-        counter = 0
-        if (counter > 10):
-            break
-        with open(path_positive_annotations + "/" + name_positive_image, "r") as file:
-            for riga in file:
-                bbox = riga.strip("\n")
-                if bbox[0:2] == "1 " :
-                    bbox = bbox.split()
-                    bbox = [int(num) for num in bbox[1:]]
-                    img_bbox.append(bbox)
-        counter += 1
-        bbox_positive.append(img_bbox)
-    file.close()
-    crop_positive_imgs = []
-    #effettuo il crop dell'immagine
-    for i in range(len(positive_images)):
-        for j in range(len(bbox_positive[i])):
-            x1,y1,x2,y2 = bbox_positive[i][j][0], bbox_positive[i][j][1], bbox_positive[i][j][2], bbox_positive[i][j][3]
-            image_crop = positive_images[i][y1:y2, x1:x2]
-            resized = cv2.resize(image_crop, (64, 128))
-            crop_positive_imgs.append(resized)
-    negative_images = []
-    name_negative_images = []
-    bbox_negative = []
-    #Ottengo i nomi delle immagini della mia cartella
-    process = subprocess.Popen(["ls", path_negative_imgs], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    output, error = process.communicate()
-    # Controlla se ci sono errori
-    if error:
-        print("Si è verificato un errore:", error)
-    else:
-        # L'outuput lo inserisco in una lista, ma preso solo i primi n elementi
-        name_negative_images = output.strip().split("\n")[:50]
-    for i in name_negative_images:
-        counter = 0
-        if (counter > 10):
-            break
-        immagine = cv2.imread(path_negative_imgs + "/" + i)
-        img_bbox = []
-        if immagine is not None:
-            #prendo l'immagine
-            negative_images.append(immagine)
-            for i in range(5):
-                #genero casualmente una bounding box
-                h, w = immagine.shape[:2]
-                x = random.randint(0, w-65)
-                y = random.randint(0, h-129)
-                window = [x, y, x + 64, y + 128]
-                img_bbox.append(window)
-            counter +=1
-            bbox_negative.append(img_bbox)
-        else:
-            print(f"Impossibile caricare l'immagine: {nome_immagine}")
-    # effettuo il crop dell'immagine
-    crop_negative_imgs = []
-    for i in range(len(negative_images)):
-        for j in range(len(bbox_negative[i])):
-            x1, y1, x2, y2 = bbox_negative[i][j][0], bbox_negative[i][j][1], bbox_negative[i][j][2], bbox_negative[i][j][3]
-            image_crop = negative_images[i][y1:y2, x1:x2]
-            resized = cv2.resize(image_crop, (64, 128))
-            crop_negative_imgs.append(resized)
-    return crop_positive_imgs, crop_negative_imgs
+from typing import Literal
 
-path_positive_txt = "/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/split_positive/train_assignment.txt"
-path_positive_imgs = "/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/WiderPerson/Images"
-path_positive_annotations = "/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/WiderPerson/Annotations"
-path_negative_imgs ="/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/negative/train_neg"
-# Carica il training set
-positive_images, negative_images = data_preparation(
-    path_positive_txt, path_positive_imgs, path_positive_annotations, path_negative_imgs)
-#estrazione delle features
-hog = cv2.HOGDescriptor()
-positive_descriptors = []
-n_positive = []
-n_negative = []
-for img in positive_images:
-    positive_descriptors.append(hog.compute(img))
-    n_positive.append(1) # vettore contenente l'etichetta dei positivi (label=1)
-negative_descriptors = []
-for img in negative_images:
-    negative_descriptors.append(hog.compute(img))
-    n_negative.append(-1) # vettore contenente l'etichetta dei negativi (label=1)
-array = []
-x = np.concatenate((positive_descriptors, negative_descriptors), axis=0)
-y = np.concatenate((n_positive, n_negative), axis=0)
-print(x)
-print(y)
-x, y = shuffle(x, y)
-print("-------------------------------------")
-print(x)
-print(y)
+import cv2
+
+
+def preprocess(img):
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
+def read_pos_images_list(img_list_path, limit=None):
+    img_fnames = []
+    counter = 0
+    with open(img_list_path, 'r') as f:
+        for line in f:
+            if limit and counter == limit:
+                break
+            img_fname = f'{line.strip()}.jpg'
+            img_fnames.append(img_fname)
+            counter += 1
+    return img_fnames
+
+
+def build_neg_images_list(imgs_dir, limit=None):
+    # get all available images names
+    img_fnames = [
+        fname
+        for fname in os.listdir(imgs_dir)
+        if os.path.isfile(os.path.join(imgs_dir, fname))
+    ]
+    return random.sample(img_fnames, limit)
+
+
+# k number of bboxes per img
+def build_neg_samples(img_fnames, imgs_dir, k, bbox_size=(64, 128), preproc: Literal['Sobel'] = None):
+    neg_samples = []
+    for fname in img_fnames:
+        img_path = os.path.join(imgs_dir, fname)
+
+        img = cv2.imread(img_path)
+        if img is None:
+            raise IOError(f'Could not load image {fname}')
+
+        if preproc == 'Sobel':
+            img = preprocess(img)
+
+        for _ in range(k):
+            bbox = random_bbox(img.shape[:2], bbox_size)
+            sample = crop_on_bbox(img, bbox, bbox_size)
+            neg_samples.append(sample)
+
+    return neg_samples
+
+
+def build_pos_samples(imgs, bboxes):
+    pos_samples = []
+    for img, bboxes in zip(imgs, bboxes):
+        pos_samples += [
+            crop_on_bbox(img, bbox)
+            for bbox in bboxes
+        ]
+
+    return pos_samples
+
+
+def random_bbox(img_shape, size=(64, 128)):
+    h, w = img_shape
+    x = random.randint(0, w - size[0] + 1)
+    y = random.randint(0, h - size[1] + 1)
+    return [x, y, x + size[0], y + size[1]]
+
+
+def read_pos_images(img_fnames, imgs_dir, preproc: Literal['Sobel'] = None):
+    images = []
+    for fname in img_fnames:
+        img_path = os.path.join(imgs_dir, fname)
+
+        img = cv2.imread(img_path)
+        if img is None:
+            raise IOError(f'Could not load image {fname}')
+
+        if preproc == 'Sobel':
+            img = preprocess(img)
+        images.append(img)
+
+    return images
+
+
+def read_bboxes(img_fnames, annotations_path):
+    bboxes = []
+    for img_name in img_fnames:
+        img_bboxes = []
+        img_annotation_path = os.path.join(annotations_path, f'{img_name}.txt')
+        with open(img_annotation_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                # if bounding box type is 'pedestrian'
+                if line.startswith('1'):
+                    bbox = line.split()
+                    bbox = [int(n) for n in bbox[1:]]
+                    if bbox:
+                        img_bboxes.append(bbox)
+        bboxes.append(img_bboxes)
+
+    return bboxes
+
+
+def crop_on_bbox(img, bbox: list, size=(64, 128)):
+    assert len(bbox) == 4, 'Bounding box should have two vertices'
+    x1, y1, x2, y2 = bbox
+    cropped_img = img[y1:y2, x1:x2]
+    return cv2.resize(cropped_img, size)
+
+
+def build_dataset():
+    fnames = read_pos_images_list(os.environ['TRAIN_ASSIGNMENT_TXT_PATH'], 10)
+    bboxes = read_bboxes(fnames, os.environ['ANNOTATIONS_PATH'])
+    imgs = read_pos_images(fnames, os.environ['POS_IMAGES_PATH'])
+    pos_samples = build_pos_samples(imgs, bboxes)
+
+    fnames = build_neg_images_list(os.environ['NEG_IMAGES_PATH'], 10)
+    neg_samples = build_neg_samples(fnames, os.environ['NEG_IMAGES_PATH'], 5)
+
+    return pos_samples, neg_samples
