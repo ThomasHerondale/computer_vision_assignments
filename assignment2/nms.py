@@ -52,4 +52,5 @@ def nms (bboxes, threshold):
             iou = area_intersection_rectangle / area_sum_rectangles
             if iou > threshold:
                 bboxes_ordered.remove(bbox_compared)
+
     return filtered
