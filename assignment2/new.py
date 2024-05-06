@@ -138,13 +138,16 @@ def crop_on_bbox(img, bbox: list, size=(64, 128)):
     return cv2.resize(cropped_img, size)
 
 
-def build_samples(n=None, neg_factor=5):
+def build_samples(n=None):
     fnames = read_pos_images_list(os.environ['TRAIN_ASSIGNMENT_TXT_PATH'], n)
     bboxes = read_bboxes(fnames, os.environ['ANNOTATIONS_PATH'])
     imgs = read_pos_images(fnames, os.environ['POS_IMAGES_PATH'])
     pos_samples = build_pos_samples(imgs, bboxes)
 
     fnames = build_neg_images_list(os.environ['NEG_IMAGES_PATH'], n)
+    # compute how many bboxes to extract per negative image,
+    # in order to, have an equal number of positive and negative samples
+    neg_factor = len(pos_samples) // len(fnames)
     neg_samples = build_neg_samples(fnames, os.environ['NEG_IMAGES_PATH'], neg_factor)
 
     return pos_samples, neg_samples
@@ -173,7 +176,7 @@ def build_dataset(pos_samples, neg_samples, size=None, cache=True):
     if cache:
         # join features and targets
         data = np.column_stack((X, y))
-        cache_ndarray(data, 'descriptor_data.npy')
+        cache_ndarray(data, 'train_descriptor_data.npy')
 
     return X, y
 
@@ -181,7 +184,7 @@ def build_dataset(pos_samples, neg_samples, size=None, cache=True):
 def load_dataset(use_cache=True, size=None) -> (np.ndarray, np.ndarray):
     if use_cache:
         dir_path = os.environ.get('CACHE_DIR_PATH')
-        file_path = os.path.join(dir_path, 'descriptor_data.npy')
+        file_path = os.path.join(dir_path, 'train_descriptor_data.npy')
         if os.path.isfile(file_path):
             if size is not None:
                 warnings.warn("Size can't be specified when loading dataset from cache, it's being ignored.")
