@@ -5,22 +5,42 @@ import numpy as np
 from sklearn.pipeline import Pipeline
 from validation import tune_hyperparameters
 from new import load_dataset
-"""
-    implement a suitable multi-scale sliding window procedure, use your classifier to detect pedestrians in the test 
-    images at 3 different scales. Include a stride parameters to speed up
-    computation. You can have an idea about the scales to use by analyzing the bounding boxes in the training set.
-"""
 
 
-def sliding_window(image, window_size=(64, 128), stide=(10, 10)) -> (int, int, np.array):
+def standardize_size(images: [np.ndarray], h: int = 700, w: int = 600) -> [(np.ndarray, float, float)]:
+    standardized_images: [np.ndarray] = []
+    if images is not None:
+        for image in images:
+            if image is not None:
+                # Se l'immagine originaria è più grande rispetto alla dimensione (h, w) stabilite,
+                # applico il filotro di Gauss
+                image_h, image_w, _ = image.shape
+                scale_w: float = w/image_w
+                scale_h: float = h/image_h
+                if image_h > h or image_w > w:
+                    filtered_image = cv2.GaussianBlur(image, (3, 3), 5)
+                    resized_image= cv2.resize(filtered_image, (w, h), interpolation=cv2.INTER_CUBIC)
+                    standardized_images.append((resized_image, scale_h, scale_w))
+                else:
+                    # se l'immagine è piccola rispetto a (h, w) allora faccio semplicemente la resize
+                    resized_image = cv2.resize(image, (w, h), interpolation=cv2.INTER_CUBIC)
+                    standardized_images.append((resized_image, scale_h, scale_w))
+            else:
+                raise TypeError("Image cannot be None")
+    else:
+        raise TypeError("Images list cannot be None")
+    return standardized_images
+
+
+def  sliding_window(image, window_size=(64, 128), stride: (int, int) = (20, 20)) -> (int, int, np.array):
     """
         Il generatore sliding window consente alla finestra di scorrimento di scorrere localmente sull'immagine
         :param image: immagine da analizzare
         :param window_size: dimensione della finestra scorevole
-        :param stide: il passo lungo le x e lungo le y
+        :param stride: il passo lungo le x e lungo le y
     """
-    for j in range(0, image.shape[0], stide[1]):
-        for i in range(0, image.shape[1], stide[0]):
+    for j in range(0, image.shape[0], stride[1]):
+        for i in range(0, image.shape[1], stride[0]):
             yield i, j, image[j:j + window_size[1], i:i + window_size[0]]
 
 
@@ -49,9 +69,14 @@ def gaussian_pyramid(image: np.ndarray, scale: float = 1.0, sigma: int = 5,
         return image
 
 
-def show_window(image: np.ndarray, hog: cv2.HOGDescriptor,
-                clf: Pipeline, scale: float = 1.0, window_size: (int, int) = (64, 128)):
-    save: [] = []
+def show_window(image: (np.ndarray, float, float),
+                hog: cv2.HOGDescriptor,
+                clf: Pipeline,
+                scale: float = 1.0,
+                window_size: (int, int) = (64, 128)) -> (np.ndarray, (float, float), [(int, int, int, int, int)]):
+    if scale == 1.0:
+        key_image: np.ndarray = image # memorizzo l'immagine che utilizzero nel mio dizionario
+
     image_scaled = gaussian_pyramid(image, scale=scale)
     for (x, y, window) in sliding_window(image_scaled, window_size):
         if window.shape[0] != window_size[1] or window.shape[1] != window_size[0]:
@@ -61,22 +86,29 @@ def show_window(image: np.ndarray, hog: cv2.HOGDescriptor,
         # Calcolo tutti gli istogrammi di orientazione del gradiente
         descriptor = hog.compute(window)
         # Passo al classificatore
-        f = clf.predict(descriptor)
+        f = clf.predict([descriptor])
+        if f == 1:
+            # memorizzo la tupla di cordinate della finestra (x, y, x2, y1)
+            # Chiamo la funzione decision_function per determinare il parametro
+            print("fai")
         cv2.imshow("Sliding Window", clone_image)
         cv2.waitKey(1)
-        time.sleep(0.20)
+        #time.sleep(0.15)
 
-def multiscale_function(images: [np.ndarray]):
-    x, y = load_dataset(size=500)
+
+def multiscale_function(images: [(np.ndarray, float, float)]):
+    x, y = load_dataset(size=1_000)
     clf, _, _ = tune_hyperparameters(x, y)
     hog = cv2.HOGDescriptor()
-    scales = (1.2, 1.0, 0.5)
-    for image in images:
-        for scale in scales:
-            show_window(image, hog, clf, scale)
+    for (image, scale_x, scale_y) in images:
+        for scale in (1.3, 1.0, 0.5):
+            show_window((image, scale_x, scale_y), hog, clf, scale)
 
 
-def read(cartella: str, numero_immagini=500):
+# ------------------------------------------------------------------------------------------------------------------
+
+
+def read(cartella: str, numero_immagini=1_000):
     immagini = []
     contatore_immagini = 0
 
@@ -109,4 +141,9 @@ def read(cartella: str, numero_immagini=500):
 
 image_path = "/Users/fede/Desktop/Unipa/anno4/Visione artificiale/Assignment/2/WiderPerson/Images"
 immagini = read(image_path)
-multiscale_function(immagini)
+immagini_2 = standardize_size(immagini)
+for (image, i, j) in immagini_2:
+    cv2.imshow("Prova", image)
+    cv2.waitKey(0)
+    print(f"Scale_h: {i}\nScale_w: {j}\n-------------------")
+#multiscale_function(immagini_2)
