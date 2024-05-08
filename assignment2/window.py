@@ -92,14 +92,36 @@ def show_window(image: np.ndarray,
     return decisions
 
 
-def multiscale_function(images: [(np.ndarray, float, float)], clf: Pipeline, hog: cv2.HOGDescriptor) -> [(float, float), [(int, int, int, int, np.ndarray)]]:
+def multiscale_function(
+        images: [(np.ndarray, float, float)], clf: Pipeline, hog: cv2.HOGDescriptor
+) -> [(float, float), [(int, int, int, int, np.ndarray)]]:
+
     list_of_return: [(), [()]] = []
     for (image, scale_y, scale_x) in images:
         plausibile_rectangular_regions: [()] = []
         for scale in (1.3, 1.0, 0.5):
             plausibile_rectangular_regions += show_window(image, hog, clf, scale)
+
+        show_detections(image, scale_y, scale_x, plausibile_rectangular_regions)
         list_of_return += [(scale_y, scale_x), plausibile_rectangular_regions]
-        print(f"list_of_return: {list_of_return}\n")
+
     return list_of_return
 
+
+def show_detections(strtched_image: np.ndarray,
+                    scale_h: float, scale_w: float, list_of_bbox: [(int, int, int, int, np.ndarray)]) -> None:
+    image = cv2.resize(
+        strtched_image,
+        (int(strtched_image.shape[1] * scale_w), int(strtched_image.shape[0] * scale_h)),
+        interpolation=cv2.INTER_CUBIC)
+    # resize tutte le bbox
+    for (x1, y1, x2, y2, _) in list_of_bbox:
+        x1 = x1 * scale_w
+        x2 = x2 * scale_w
+        y1 = y1 * scale_h
+        y2 = y2 * scale_h
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    cv2.imshow("Drawing Bounding Boxes", image)
+    cv2.waitKey(0)
 # ------------------------------------------------------------------------------------------------------------------
