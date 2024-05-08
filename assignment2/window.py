@@ -91,6 +91,22 @@ def show_window(image: np.ndarray,
         # time.sleep(0.50)
     return decisions
 
+def show_detections(strtched_image: np.ndarray,
+                    scale_h: float, scale_w: float, list_of_bbox: [(int, int, int, int, np.ndarray)]) -> None:
+    image = cv2.resize(
+        strtched_image,
+        (int(strtched_image.shape[1] * scale_w), int(strtched_image.shape[0] * scale_h)),
+        interpolation=cv2.INTER_CUBIC)
+    # resize tutte le bbox
+    for (x1, y1, x2, y2, _) in list_of_bbox:
+        x1 = x1 * scale_w
+        x2 = x2 * scale_w
+        y1 = y1 * scale_h
+        y2 = y2 * scale_h
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    cv2.imshow("Drawing Bounding Boxes", image)
+    cv2.waitKey(0)
 
 def multiscale_function(
         images: [(np.ndarray, float, float)], clf: Pipeline, hog: cv2.HOGDescriptor
@@ -108,20 +124,5 @@ def multiscale_function(
     return list_of_return
 
 
-def show_detections(strtched_image: np.ndarray,
-                    scale_h: float, scale_w: float, list_of_bbox: [(int, int, int, int, np.ndarray)]) -> None:
-    image = cv2.resize(
-        strtched_image,
-        (int(strtched_image.shape[1] * scale_w), int(strtched_image.shape[0] * scale_h)),
-        interpolation=cv2.INTER_CUBIC)
-    # resize tutte le bbox
-    for (x1, y1, x2, y2, _) in list_of_bbox:
-        x1 = x1 * scale_w
-        x2 = x2 * scale_w
-        y1 = y1 * scale_h
-        y2 = y2 * scale_h
-        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    cv2.imshow("Drawing Bounding Boxes", image)
-    cv2.waitKey(0)
 # ------------------------------------------------------------------------------------------------------------------
