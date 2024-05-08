@@ -92,16 +92,13 @@ def show_window(image: np.ndarray,
     return decisions
 
 
-def multiscale_function(images: [(np.ndarray, float, float)]) -> [(float, float), [(int, int, int, int, np.ndarray)]]:
-    x, y = load_dataset(size=1_000)
-    clf, _, _ = tune_hyperparameters(x, y)
-    hog = cv2.HOGDescriptor()
+def multiscale_function(images: [(np.ndarray, float, float)], clf: Pipeline, hog: cv2.HOGDescriptor) -> [(float, float), [(int, int, int, int, np.ndarray)]]:
     list_of_return: [(), [()]] = []
-    for (image, scale_x, scale_y) in images:
+    for (image, scale_y, scale_x) in images:
         plausibile_rectangular_regions: [()] = []
         for scale in (1.3, 1.0, 0.5):
             plausibile_rectangular_regions += show_window(image, hog, clf, scale)
-        list_of_return += [(scale_x, scale_y), plausibile_rectangular_regions]
+        list_of_return += [(scale_y, scale_x), plausibile_rectangular_regions]
         print(f"list_of_return: {list_of_return}\n")
     return list_of_return
 
