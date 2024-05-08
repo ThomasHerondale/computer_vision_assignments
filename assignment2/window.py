@@ -13,7 +13,7 @@ Prediction = Tuple[Bbox, float]
 def imgs_to_std_size(images: List[np.ndarray], w: int = 500, h: int = 700) -> List[StdImage]:
     std_images = []
     for image in images:
-        img_h, img_w, _ = image.shape
+        img_h, img_w = image.shape[0], image.shape[1]
         w_ratio = w / img_w
         h_ratio = h / img_h
         std_image = cv2.resize(image, dsize=(w, h), interpolation=cv2.INTER_CUBIC)
@@ -23,7 +23,7 @@ def imgs_to_std_size(images: List[np.ndarray], w: int = 500, h: int = 700) -> Li
 
 
 def scale_image(image: np.ndarray, scale: float) -> np.ndarray:
-    h, w, _ = image.shape
+    h, w = image.shape[0], image.shape[1]
     new_h, new_w = int(h * scale), int(w * scale)
 
     return cv2.resize(image, dsize=(new_w, new_h), interpolation=cv2.INTER_CUBIC)
@@ -56,14 +56,18 @@ def sliding_window(
 ) -> (Bbox, np.ndarray):
     for x1 in range(0, image.shape[0], stride[0]):
         for y1 in range(0, image.shape[1], stride[1]):
-            x2, y2 = x1 + win_size[1], y1 + win_size[0]
+            x2, y2 = x1 + win_size[0], y1 + win_size[1]
             bbox = (x1, y1, x2, y2)
+            cropped_image = image[x1:x2, y1:y2]
+            w, h = cropped_image.shape[0], cropped_image.shape[1]
+            if w != win_size[0] or h != win_size[1]:
+                continue
             yield bbox, image[x1:x2, y1:y2]
 
 
 def compute_hog(image: np.ndarray) -> np.ndarray:
     x = cv2.HOGDescriptor().compute(image)
-    return np.array(x)
+    return np.array(x).reshape(1, -1)
 
 
 def detect(
@@ -74,13 +78,13 @@ def detect(
     preds = []
 
     for (bbox, cropped_image) in sliding_window(image, win_size):
-        cropped_w, cropped_h, _ = cropped_image.shape
+        cropped_w, cropped_h = cropped_image.shape[0], cropped_image.shape[1]
 
         # skip if bbox overflows
-        if cropped_w != win_size[1] or cropped_h != win_size[0]:
+        if cropped_w != win_size[0] or cropped_h != win_size[1]:
             continue
 
-        x = compute_hog(image)
+        x = compute_hog(cropped_image)
         y = clf.predict(x)[0]
 
         # skip bbox if no pedestrian is detected

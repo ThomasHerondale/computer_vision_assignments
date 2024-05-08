@@ -6,7 +6,7 @@ import numpy as np
 
 from data import read_pos_images_list, read_pos_images, build_neg_images_list, read_bboxes
 from nms import non_maxima_suppression, image_score
-from window import Prediction, StdRatios
+from window import Prediction, StdRatios, Bbox
 from sklearn.utils import shuffle
 from typing import List, Tuple
 
@@ -46,9 +46,12 @@ def load_test_set(use_cache=True) -> (list[np.ndarray], list[list[list[int]]]):
     return images, bboxes
 
 
-def test_model(std_predictions: List[Tuple[StdRatios, List[Prediction]]]):
-    images, bboxes = load_test_set()
-
+def test_model(
+        images: List[np.ndarray],
+        bboxes: List[List[Bbox]],
+        std_predictions: List[Tuple[StdRatios, List[Prediction]]]
+):
+    total_tp, total_fp, total_fn = 0, 0, 0
     for image, (std_ratios, predictions), targets in zip(images, std_predictions, bboxes):
         scaled_preds = []
         # rescale every bbox because of the image stretch
@@ -76,9 +79,9 @@ def test_model(std_predictions: List[Tuple[StdRatios, List[Prediction]]]):
         cv2.imshow("", image)
         cv2.waitKey(0)
 
-        total_tp, total_fp, total_fn = 0, 0, 0
-        tp, fp, fn = image_score(predictions, targets)
+        tp, fp, fn = image_score(filtered_bboxes, targets)
         total_tp += tp
         total_fp += fp
         total_fn += fn
-        return total_tp, total_fp, total_fn
+
+    return total_tp, total_fp, total_fn

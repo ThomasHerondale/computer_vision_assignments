@@ -1,10 +1,10 @@
-import data, test, nms_, svm, validation, window_, cv2
+import data, test, nms, svm, validation, window, cv2
 
 if __name__ == '__main__':
-    x, y = new.load_dataset(size=0.5)
+    x, y = data.load_dataset(size=0.5)
     model,_,_ = validation.tune_hyperparameters(x,y)
     immagini, bboxes = test.load_test_set()
-    hog = cv2.HOGDescriptor()
-    lista_immagini = window.standardize_size(immagini)
-    data = window.multiscale_function(lista_immagini, model, hog)
-    nms.test_model(data)
+    i = 1
+    immagini, bboxes = immagini[:i], bboxes[:i]
+    data = window.predict(images=immagini, clf=model)
+    test.test_model(immagini, bboxes, data)
