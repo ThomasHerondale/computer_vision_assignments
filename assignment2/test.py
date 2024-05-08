@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 from data import read_pos_images_list, read_pos_images, build_neg_images_list, read_bboxes
-from nms import non_maxima_suppression, score
+from nms import non_maxima_suppression, image_score
 from sklearn.utils import shuffle
 
 from joblib import load, dump
