@@ -91,11 +91,11 @@ def show_window(image: np.ndarray,
         # time.sleep(0.50)
     return decisions
 
-def show_detections(strtched_image: np.ndarray,
+def show_detections(stretched_image: np.ndarray,
                     scale_h: float, scale_w: float, list_of_bbox: [(int, int, int, int, np.ndarray)]) -> None:
     image = cv2.resize(
-        strtched_image,
-        (int(strtched_image.shape[1] * scale_w), int(strtched_image.shape[0] * scale_h)),
+        stretched_image,
+        (int(stretched_image.shape[1] * scale_w), int(stretched_image.shape[0] * scale_h)),
         interpolation=cv2.INTER_CUBIC)
     # resize tutte le bbox
     for (x1, y1, x2, y2, _) in list_of_bbox:
