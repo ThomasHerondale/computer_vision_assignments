@@ -12,19 +12,11 @@ def standardize_size(images: [np.ndarray], h: int = 700, w: int = 500) -> [(np.n
     if images is not None:
         for image in images:
             if image is not None:
-                # Se l'immagine originaria è più grande rispetto alla dimensione (h, w) stabilite,
-                # applico il filotro di Gauss
                 image_h, image_w, _ = image.shape
                 scale_w: float = w / image_w
                 scale_h: float = h / image_h
-                if image_h > h or image_w > w:
-                    filtered_image = cv2.GaussianBlur(image, (3, 3), 5)
-                    resized_image = cv2.resize(filtered_image, (w, h), interpolation=cv2.INTER_CUBIC)
-                    standardized_images.append((resized_image, scale_h, scale_w))
-                else:
-                    # se l'immagine è piccola rispetto a (h, w) allora faccio semplicemente la resize
-                    resized_image = cv2.resize(image, (w, h), interpolation=cv2.INTER_CUBIC)
-                    standardized_images.append((resized_image, scale_h, scale_w))
+                resized_image = cv2.resize(image, (w, h), interpolation=cv2.INTER_CUBIC)
+                standardized_images.append((resized_image, scale_h, scale_w))
             else:
                 raise TypeError("Image cannot be None")
     else:
@@ -108,6 +100,7 @@ def show_detections(stretched_image: np.ndarray,
 
     cv2.imshow("Drawing Bounding Boxes", image)
     cv2.waitKey(0)
+
 
 def multiscale_function(
         images: [(np.ndarray, float, float)], clf: Pipeline, hog: cv2.HOGDescriptor
