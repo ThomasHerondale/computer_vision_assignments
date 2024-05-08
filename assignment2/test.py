@@ -22,9 +22,9 @@ def load_test_set(use_cache=True) -> (list[np.ndarray], list[list[list[int]]]):
             warnings.warn('Test set cache files not found. Rebuilding dataset from scratch...')
 
     pos_fnames = read_pos_images_list(os.environ['TEST_ASSIGNMENT_TXT_PATH'])
-    pos_images = read_pos_images(pos_fnames, os.environ['POS_IMAGES_PATH'])
+    pos_images = read_pos_images(pos_fnames, os.environ['POS_IMAGES_PATH'], preproc=None)
     neg_fnames = build_neg_images_list(os.environ['TEST_IMAGES_PATH'])
-    neg_images = read_pos_images(neg_fnames, os.environ['TEST_IMAGES_PATH'])
+    neg_images = read_pos_images(neg_fnames, os.environ['TEST_IMAGES_PATH'], preproc=None)
 
     images = pos_images + neg_images
     bboxes = read_bboxes(pos_fnames, os.environ['ANNOTATIONS_PATH'])

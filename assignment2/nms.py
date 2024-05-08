@@ -8,8 +8,8 @@ def compute_area_rect(rect):
 
 def compute_area_intersection_rectangles(rect1, rect2):
     # Estrai le coordinate e le dimensioni dei rettangoli
-    x1, y1, w1, h1 = rect1
-    x2, y2, w2, h2 = rect2
+    x1, y1, w1, h1, _ = rect1
+    x2, y2, w2, h2, _= rect2
 
     # Calcola le coordinate dei vertici dei rettangoli
     x1_min, y1_min = x1, y1
@@ -40,8 +40,7 @@ def compute_iou (bbox_selected, bbox_compared) :
     return iou
 def nms (bboxes, threshold = 0.5):
     # Ordino le bbox in base allo score, ossia il 5 elemento dell'array [x1,y1,x2,y2,c] rappresentate la bbox
-    index_ordered = np.argsort(bboxes[:])[::-1]
-    bboxes_ordered = bboxes[index_ordered]
+    bboxes_ordered = sorted(bboxes, key=lambda l: l[4][0], reverse=True)
     #array di bbox corrette
     filtered_bboxes = []
 
@@ -82,19 +81,16 @@ def get_image_scores(annotated_boxes, retrivied_bboxes):
             tp +=1
     return tp, fp, fn
 
-# [ ((float, float), [(int, int, int, int, np.ndarray)])]
 def test_model(factors_with_bboxes_founded):
     images, all_annotated_bboxes = load_test_set()
     all_bboxes_filtered = np.array([])
     i = 0
     for scales, bboxes_founded in factors_with_bboxes_founded:
-        h_factors, w_factors = scales
         for bbox in bboxes_founded:
             bbox[0] = int(bbox[0] * scales[1])
             bbox[1] = int(bbox[1] * scales[0])
             bbox[2] = int(bbox[2] * scales[1])
             bbox[3] = int(bbox[3] * scales[0])
-        print(bboxes_founded)
         bboxes_filtered = nms(bboxes_founded)
         image = images[i]
         for bbox in bboxes_filtered:
