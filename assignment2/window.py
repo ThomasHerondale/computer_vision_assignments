@@ -91,6 +91,7 @@ def show_window(image: np.ndarray,
         # time.sleep(0.50)
     return decisions
 
+
 def show_detections(stretched_image: np.ndarray,
                     scale_h: float, scale_w: float, list_of_bbox: [(int, int, int, int, np.ndarray)]) -> None:
     image = cv2.resize(
