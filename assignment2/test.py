@@ -6,7 +6,9 @@ import numpy as np
 
 from data import read_pos_images_list, read_pos_images, build_neg_images_list, read_bboxes
 from nms import non_maxima_suppression, image_score
+from window import Prediction, StdRatios
 from sklearn.utils import shuffle
+from typing import List, Tuple
 
 from joblib import load, dump
 
