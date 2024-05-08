@@ -218,9 +218,3 @@ def cache_ndarray(arr, fname):
     # write to file
     np.save(file_path, arr)
 
-
-if __name__ == '__main__':
-    # dataset size is 280664
-    # we halve the size for computational capacity
-    X, y = load_dataset(use_cache=True, size=0.5)
-    print(X.shape)

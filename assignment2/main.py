@@ -1,4 +1,4 @@
-import new, test, nms, svm, validation, window, cv2
+import data, test, nms_, svm, validation, window_, cv2
 
 if __name__ == '__main__':
     x, y = new.load_dataset(size=0.5)

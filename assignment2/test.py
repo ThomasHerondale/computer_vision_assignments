@@ -1,9 +1,11 @@
 import os
 import warnings
 
+import cv2
 import numpy as np
 
-from new import read_pos_images_list, read_pos_images, build_neg_images_list, read_bboxes
+from data import read_pos_images_list, read_pos_images, build_neg_images_list, read_bboxes
+from nms import non_maxima_suppression, score
 from sklearn.utils import shuffle
 
 from joblib import load, dump
@@ -40,3 +42,41 @@ def load_test_set(use_cache=True) -> (list[np.ndarray], list[list[list[int]]]):
         dump(bboxes, test_set_annotations_path)
 
     return images, bboxes
+
+
+def test_model(std_predictions: List[Tuple[StdRatios, List[Prediction]]]):
+    images, bboxes = load_test_set()
+
+    for image, (std_ratios, predictions), targets in zip(images, std_predictions, bboxes):
+        scaled_preds = []
+        # rescale every bbox because of the image stretch
+        for bbox, confidence in predictions:
+            x_ratio, y_ratio = std_ratios
+            x1, y1, x2, y2 = bbox
+            scaled_bbox = (
+                int(x1 * x_ratio),
+                int(y1 * y_ratio),
+                int(x2 * x_ratio),
+                int(y2 * y_ratio)
+            )
+            scaled_preds.append((scaled_bbox, confidence))
+
+        filtered_bboxes = non_maxima_suppression(scaled_preds)
+
+        for bbox in filtered_bboxes:
+            cv2.rectangle(
+                image,
+                pt1=(bbox[0], bbox[1]),
+                pt2=(bbox[2], bbox[3]),
+                color=(0, 255, 0),
+                thickness=2
+            )
+        cv2.imshow("", image)
+        cv2.waitKey(0)
+
+        total_tp, total_fp, total_fn = 0, 0, 0
+        tp, fp, fn = image_score(preds, targets)
+        total_tp += tp
+        total_fp += fp
+        total_fn += fn
+        return total_tp, total_fp, total_fn

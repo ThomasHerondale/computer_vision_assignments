@@ -10,7 +10,7 @@ from joblib import dump, load
 
 import cv2
 
-from new import *
+from data import *
 
 
 def _build_samples(n=None, neg_factor=5):
@@ -116,11 +116,3 @@ def tune_hyperparameters(X_train, y_train, use_cache=True) -> (object, dict, flo
         dump(best_model, model_file_path)
         dump(model_info, model_info_file_path)
     return best_model, gs.best_params_, gs.best_score_
-
-
-if __name__ == '__main__':
-    X, y = load_dataset(use_cache=True, size=0.5)
-    print(X.shape)
-    logging.info('BUILT TRAINING SET')
-    model, params, score = tune_hyperparameters(X, y)
-    print(model.named_steps['classifier'], params, score)

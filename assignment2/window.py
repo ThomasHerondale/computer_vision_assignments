@@ -1,122 +1,108 @@
-import os
-import time
+from typing import List, Tuple, Union
+
 import cv2
 import numpy as np
 from sklearn.pipeline import Pipeline
-from validation import tune_hyperparameters
-from new import load_dataset
+
+StdImage = Tuple[np.ndarray, float, float]
+StdRatios = Tuple[float, float]
+Bbox = Tuple[int, int, int, int]
+Prediction = Tuple[Bbox, float]
 
 
-def standardize_size(images: [np.ndarray], h: int = 700, w: int = 500) -> [(np.ndarray, float, float)]:
-    standardized_images: [np.ndarray] = []
-    if images is not None:
-        for image in images:
-            if image is not None:
-                image_h, image_w = image.shape
-                scale_w: float = w / image_w
-                scale_h: float = h / image_h
-                resized_image = cv2.resize(image, (w, h), interpolation=cv2.INTER_CUBIC)
-                standardized_images.append((resized_image, scale_h, scale_w))
-            else:
-                raise TypeError("Image cannot be None")
-    else:
-        raise TypeError("Images list cannot be None")
-    return standardized_images
+def imgs_to_std_size(images: List[np.ndarray], w: int = 500, h: int = 700) -> List[StdImage]:
+    std_images = []
+    for image in images:
+        img_h, img_w, _ = image.shape
+        w_ratio = w / img_w
+        h_ratio = h / img_h
+        std_image = cv2.resize(image, dsize=(w, h), interpolation=cv2.INTER_CUBIC)
+        std_images.append((std_image, w_ratio, h_ratio))
+
+    return std_images
 
 
-def sliding_window(image, window_size=(64, 128), stride: (int, int) = (20, 20)) -> (int, int, np.array):
-    """
-        Il generatore sliding window consente alla finestra di scorrimento di scorrere localmente sull'immagine
-        :param image: immagine da analizzare
-        :param window_size: dimensione della finestra scorevole
-        :param stride: il passo lungo le x e lungo le y
-    """
-    for j in range(0, image.shape[0], stride[1]):
-        for i in range(0, image.shape[1], stride[0]):
-            yield i, j, image[j:j + window_size[1], i:i + window_size[0]]
+def scale_image(image: np.ndarray, scale: float) -> np.ndarray:
+    h, w, _ = image.shape
+    new_h, new_w = int(h * scale), int(w * scale)
+
+    return cv2.resize(image, dsize=(new_w, new_h), interpolation=cv2.INTER_CUBIC)
 
 
-def resize_img(image: np.ndarray, scale: float = 1.0) -> np.ndarray:
-    h = image.shape[0]
-    w = image.shape[1]
-    if scale > 1.0:
-        return cv2.resize(image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LINEAR)
-    else:
-        return cv2.resize(image, (int(w * scale), int(h * scale)))
+def gaussian_pyramid(
+        image: np.ndarray,
+        sigma: int = 5,
+        kernel_size: (int, int) = (3, 3),
+) -> List[np.ndarray]:
+    images = []
+
+    for scale in [1.3, 1.0, 0.5]:
+        if scale < 1.0:
+            # add filter if scaling down image to correct edge sharpening
+            filtered_image = cv2.GaussianBlur(image, kernel_size, sigmaX=sigma, sigmaY=sigma)
+            images.append(scale_image(filtered_image, scale))
+        elif scale > 1.0:
+            images.append(scale_image(image, scale))
+        else:
+            images.append(image)
+
+    return images
 
 
-def gaussian_pyramid(image: np.ndarray, scale: float = 1.0, sigma: int = 5,
-                     kernel_size: (int, int) = (3, 3)) -> np.ndarray:
-    if scale < 1.0:
-        filtered_image = cv2.GaussianBlur(image, ksize=kernel_size, sigmaX=sigma, sigmaY=sigma)
-        resized_image = resize_img(filtered_image, scale)
-        return resized_image
-    elif scale > 1.0:
-        return resize_img(image, scale=scale)
-    else:
-        return image
+def sliding_window(
+        image: np.ndarray,
+        win_size: (int, int),
+        stride: (int, int) = (30, 30),
+) -> (Bbox, np.ndarray):
+    for x1 in range(0, image.shape[0], stride[0]):
+        for y1 in range(0, image.shape[1], stride[1]):
+            x2, y2 = x1 + win_size[1], y1 + win_size[0]
+            bbox = (x1, y1, x2, y2)
+            yield bbox, image[x1:x2, y1:y2]
 
 
-def show_window(image: np.ndarray,
-                hog: cv2.HOGDescriptor,
-                clf: Pipeline,
-                scale: float = 1.0,
-                window_size: (int, int) = (64, 128)
-                ) -> [(int, int, int, int, np.ndarray)]:
-    decisions: [()] = []
-    image_scaled = gaussian_pyramid(image, scale=scale)
-    for (x, y, window) in sliding_window(image_scaled, window_size):
-        if window.shape[0] != window_size[1] or window.shape[1] != window_size[0]:
+def compute_hog(image: np.ndarray) -> np.ndarray:
+    x = cv2.HOGDescriptor().compute(image)
+    return np.array(x)
+
+
+def detect(
+        image: np.ndarray,
+        clf: Pipeline,
+        win_size: (int, int) = (64, 128),
+) -> List[Prediction]:
+    preds = []
+
+    for (bbox, cropped_image) in sliding_window(image, win_size):
+        cropped_w, cropped_h, _ = cropped_image.shape
+
+        # skip if bbox overflows
+        if cropped_w != win_size[1] or cropped_h != win_size[0]:
             continue
-        clone_image = image_scaled.copy()
-        #cv2.rectangle(clone_image, (x, y), (x + window_size[0], y + window_size[1]), (255, 0, 0), 2)
-        descriptor = hog.compute(window)
-        # Passo al classificatore
-        f = clf.predict([descriptor])
-        if f[0] == 1:
-            # memorizzo la tupla di cordinate della finestra (x, y, x2, y2)
-            # Chiamo la funzione decision_function per determinare il parametro
-            c = clf.decision_function([descriptor])
-            decisions.append([x, y, x + window_size[0], y + window_size[1], c])
-        #cv2.imshow("Sliding Window", clone_image)
-        #cv2.waitKey(1)
-        # time.sleep(0.50)
-    return decisions
+
+        x = compute_hog(image)
+        y = clf.predict(x)[0]
+
+        # skip bbox if no pedestrian is detected
+        if y == -1:
+            continue
+
+        confidence = clf.decision_function(x)[0]
+
+        preds.append((bbox, confidence))
+
+    return preds
 
 
-def show_detections(stretched_image: np.ndarray,
-                    scale_h: float, scale_w: float, list_of_bbox: [[int, int, int, int, np.ndarray]]) -> None:
-    image = cv2.resize(
-        stretched_image,
-        (int(stretched_image.shape[1] * scale_w), int(stretched_image.shape[0] * scale_h)),
-        interpolation=cv2.INTER_CUBIC)
-    # resize tutte le bbox
-    for (x1, y1, x2, y2, _) in list_of_bbox:
-        x1 = int(x1 * scale_w)
-        x2 = int(x2 * scale_w)
-        y1 = int(y1 * scale_h)
-        y2 = int(y2 * scale_h)
-        cv2.rectangle(image, pt1=(x1, y1), pt2=(x2, y2), color=(0, 255, 0), thickness=2)
+def predict(images: List[np.ndarray], clf: Pipeline) -> List[Tuple[StdRatios, List[Prediction]]]:
+    result = []
 
-    cv2.imshow("Drawing Bounding Boxes", image)
-    cv2.waitKey(0)
+    std_images = imgs_to_std_size(images)
+    for (image, w_ratio, h_ratio) in std_images:
+        detections = []
+        for scaled_image in gaussian_pyramid(image):
+            detections += detect(scaled_image, clf)
 
+        result += [((w_ratio, h_ratio), detections)]
 
-def multiscale_function(
-        images: [(np.ndarray, float, float)], clf: Pipeline, hog: cv2.HOGDescriptor
-) -> [(float, float), [[int, int, int, int, np.ndarray]]]:
-    images = [images[0], images[1]]
-    list_of_return: [(), [()]] = []
-    for (image, scale_h, scale_w) in images:
-        plausibile_rectangular_regions: [()] = []
-        for scale in (1.3, 1.0, 0.5):
-            plausibile_rectangular_regions += show_window(image, hog, clf, scale)
-
-        #show_detections(image, scale_h, scale_w, plausibile_rectangular_regions)
-        list_of_return += [((scale_h, scale_w), plausibile_rectangular_regions)]
-
-    return list_of_return
-
-
-
-# ------------------------------------------------------------------------------------------------------------------
+    return result
