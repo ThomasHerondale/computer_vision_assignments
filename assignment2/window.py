@@ -12,7 +12,7 @@ def standardize_size(images: [np.ndarray], h: int = 700, w: int = 500) -> [(np.n
     if images is not None:
         for image in images:
             if image is not None:
-                image_h, image_w, _ = image.shape
+                image_h, image_w = image.shape
                 scale_w: float = w / image_w
                 scale_h: float = h / image_h
                 resized_image = cv2.resize(image, (w, h), interpolation=cv2.INTER_CUBIC)
@@ -69,7 +69,7 @@ def show_window(image: np.ndarray,
         if window.shape[0] != window_size[1] or window.shape[1] != window_size[0]:
             continue
         clone_image = image_scaled.copy()
-        cv2.rectangle(clone_image, (x, y), (x + window_size[0], y + window_size[1]), (255, 0, 0), 2)
+        #cv2.rectangle(clone_image, (x, y), (x + window_size[0], y + window_size[1]), (255, 0, 0), 2)
         descriptor = hog.compute(window)
         # Passo al classificatore
         f = clf.predict([descriptor])
@@ -77,26 +77,26 @@ def show_window(image: np.ndarray,
             # memorizzo la tupla di cordinate della finestra (x, y, x2, y2)
             # Chiamo la funzione decision_function per determinare il parametro
             c = clf.decision_function([descriptor])
-            decisions.append((x, y, x + window_size[0], y + window_size[1], c))
-        cv2.imshow("Sliding Window", clone_image)
-        cv2.waitKey(1)
+            decisions.append([x, y, x + window_size[0], y + window_size[1], c])
+        #cv2.imshow("Sliding Window", clone_image)
+        #cv2.waitKey(1)
         # time.sleep(0.50)
     return decisions
 
 
 def show_detections(stretched_image: np.ndarray,
-                    scale_h: float, scale_w: float, list_of_bbox: [(int, int, int, int, np.ndarray)]) -> None:
+                    scale_h: float, scale_w: float, list_of_bbox: [[int, int, int, int, np.ndarray]]) -> None:
     image = cv2.resize(
         stretched_image,
         (int(stretched_image.shape[1] * scale_w), int(stretched_image.shape[0] * scale_h)),
         interpolation=cv2.INTER_CUBIC)
     # resize tutte le bbox
     for (x1, y1, x2, y2, _) in list_of_bbox:
-        x1 = x1 * scale_w
-        x2 = x2 * scale_w
-        y1 = y1 * scale_h
-        y2 = y2 * scale_h
-        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        x1 = int(x1 * scale_w)
+        x2 = int(x2 * scale_w)
+        y1 = int(y1 * scale_h)
+        y2 = int(y2 * scale_h)
+        cv2.rectangle(image, pt1=(x1, y1), pt2=(x2, y2), color=(0, 255, 0), thickness=2)
 
     cv2.imshow("Drawing Bounding Boxes", image)
     cv2.waitKey(0)
@@ -104,16 +104,16 @@ def show_detections(stretched_image: np.ndarray,
 
 def multiscale_function(
         images: [(np.ndarray, float, float)], clf: Pipeline, hog: cv2.HOGDescriptor
-) -> [(float, float), [(int, int, int, int, np.ndarray)]]:
-
+) -> [(float, float), [[int, int, int, int, np.ndarray]]]:
+    images = [images[0], images[1]]
     list_of_return: [(), [()]] = []
-    for (image, scale_y, scale_x) in images:
+    for (image, scale_h, scale_w) in images:
         plausibile_rectangular_regions: [()] = []
         for scale in (1.3, 1.0, 0.5):
             plausibile_rectangular_regions += show_window(image, hog, clf, scale)
 
-        show_detections(image, scale_y, scale_x, plausibile_rectangular_regions)
-        list_of_return += [(scale_y, scale_x), plausibile_rectangular_regions]
+        #show_detections(image, scale_h, scale_w, plausibile_rectangular_regions)
+        list_of_return += [((scale_h, scale_w), plausibile_rectangular_regions)]
 
     return list_of_return
 

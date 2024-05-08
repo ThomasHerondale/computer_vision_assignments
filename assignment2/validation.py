@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV, PredefinedSplit
@@ -81,7 +82,8 @@ def tune_hyperparameters(X_train, y_train, use_cache=True) -> (object, dict, flo
         else:
             warnings.warn('Validated model cache file not found. Revalidating model from scratch...')
 
-    X_val, y_val = _load_validation_set(use_cache, 50)
+    X_val, y_val = _load_validation_set(use_cache)
+    logging.info('BUILT VALIDATION SET')
     X = np.concatenate((X_train, X_val))
     y = np.concatenate((y_train, y_val))
 
@@ -116,3 +118,9 @@ def tune_hyperparameters(X_train, y_train, use_cache=True) -> (object, dict, flo
     return best_model, gs.best_params_, gs.best_score_
 
 
+if __name__ == '__main__':
+    X, y = load_dataset(use_cache=True, size=0.5)
+    print(X.shape)
+    logging.info('BUILT TRAINING SET')
+    model, params, score = tune_hyperparameters(X, y)
+    print(model.named_steps['classifier'], params, score)

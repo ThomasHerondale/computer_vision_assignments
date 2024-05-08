@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 import random
 import warnings
@@ -7,6 +8,7 @@ from typing import Literal
 import cv2
 import numpy as np
 from sklearn.utils import shuffle
+from sklearn.utils.random import sample_without_replacement
 
 from readenv import loads
 
@@ -36,6 +38,7 @@ def build_neg_images_list(imgs_dir, limit=None):
         if os.path.isfile(os.path.join(imgs_dir, fname))
     ]
     limit = len(img_fnames) if limit is None else limit
+    limit = len(img_fnames) if limit >= len(img_fnames) else limit
     return random.sample(population=img_fnames, k=limit)
 
 
@@ -186,16 +189,24 @@ def load_dataset(use_cache=True, size=None) -> (np.ndarray, np.ndarray):
         dir_path = os.environ.get('CACHE_DIR_PATH')
         file_path = os.path.join(dir_path, 'train_descriptor_data.npy')
         if os.path.isfile(file_path):
-            if size is not None:
+            if isinstance(size, int):
                 warnings.warn("Size can't be specified when loading dataset from cache, it's being ignored.")
             data = np.load(file_path)
+            if isinstance(size, float):
+                n_samples = math.floor(size * len(data))
+                idxs = sample_without_replacement(
+                    n_population=len(data),
+                    n_samples=n_samples,
+                    random_state=42
+                )
+                data = data[idxs]
             return data[:, :-1], data[:, -1]
         else:
             warnings.warn('Cache file not found. Rebuilding dataset from scratch...')
 
     # if we didn't return, we didn't use cache -> rebuild dataset
-    pos_samples, neg_samples = build_samples(size)
-    return build_dataset(pos_samples, neg_samples, size, use_cache)
+    pos_samples, neg_samples = build_samples()
+    return build_dataset(pos_samples, neg_samples, cache=use_cache)
 
 
 def cache_ndarray(arr, fname):
@@ -209,4 +220,7 @@ def cache_ndarray(arr, fname):
 
 
 if __name__ == '__main__':
-    X, y = load_dataset(use_cache=True)
+    # dataset size is 280664
+    # we halve the size for computational capacity
+    X, y = load_dataset(use_cache=True, size=0.5)
+    print(X.shape)
