@@ -53,9 +53,6 @@ def resize_img(image: np.ndarray, scale: float = 1.0) -> np.ndarray:
         return cv2.resize(image, (int(w * scale), int(h * scale)))
 
 
-# implementare la funzione che ridimensiona l'immagine in base al fattore di scala.
-# prima di effettuare il ridimensionamento devo eseguire il giltro di gauss
-# immagine ridimensionata la invoco
 def gaussian_pyramid(image: np.ndarray, scale: float = 1.0, sigma: int = 5,
                      kernel_size: (int, int) = (3, 3)) -> np.ndarray:
     if scale < 1.0:
@@ -81,35 +78,18 @@ def show_window(image: np.ndarray,
             continue
         clone_image = image_scaled.copy()
         cv2.rectangle(clone_image, (x, y), (x + window_size[0], y + window_size[1]), (255, 0, 0), 2)
-        # Calcolo tutti gli istogrammi di orientazione del gradiente
         descriptor = hog.compute(window)
         # Passo al classificatore
         f = clf.predict([descriptor])
-        #print(f"Classificatore: {f}\n-----------------")
         if f[0] == 1:
             # memorizzo la tupla di cordinate della finestra (x, y, x2, y2)
             # Chiamo la funzione decision_function per determinare il parametro
             c = clf.decision_function([descriptor])
-            #print(f"Decision: {c}\n-----------------------")
-            #print(type(c))
             decisions.append((x, y, x + window_size[0], y + window_size[1], c))
-            #print(f"Array: {decisions}\n")
         cv2.imshow("Sliding Window", clone_image)
         cv2.waitKey(1)
-        #time.sleep(0.50)
+        # time.sleep(0.50)
     return decisions
-
-
-"""x = [
-1.    (1.2, 0.6),
-2.    [
-   0.  (0, 0, 64, 128, [0.78]),
-   1.  (0, 0, 64, 128, [0.78]),
-   2.  (0, 0, 64, 128, [0.78]),
-   3.  (0, 0, 64, 128, [0.78])
-     ]
-]
-"""
 
 
 def multiscale_function(images: [(np.ndarray, float, float)]) -> [(float, float), [(int, int, int, int, np.ndarray)]]:
@@ -124,6 +104,5 @@ def multiscale_function(images: [(np.ndarray, float, float)]) -> [(float, float)
         list_of_return += [(scale_x, scale_y), plausibile_rectangular_regions]
         print(f"list_of_return: {list_of_return}\n")
     return list_of_return
-
 
 # ------------------------------------------------------------------------------------------------------------------
