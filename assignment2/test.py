@@ -75,7 +75,7 @@ def test_model(std_predictions: List[Tuple[StdRatios, List[Prediction]]]):
         cv2.waitKey(0)
 
         total_tp, total_fp, total_fn = 0, 0, 0
-        tp, fp, fn = image_score(preds, targets)
+        tp, fp, fn = image_score(predictions, targets)
         total_tp += tp
         total_fp += fp
         total_fn += fn
