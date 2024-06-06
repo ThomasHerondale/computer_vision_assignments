@@ -6,7 +6,6 @@ class Tracker:
         self.counter_last_update = 0
         self.id = label
         self.bbox = bbox
-        self.bbox_difference = np.array([0, 0, 0, 0], dtype=np.float32)
         self.descriptor = self.compute_descriptor(img, bbox)
 
 
@@ -19,7 +18,6 @@ class Tracker:
         """
         Aggiorna le informazioni del Tracker
         """
-        self.bbox_difference = bbox - self.bbox
         self.bbox = bbox
         self.descriptor = self.compute_descriptor(img, bbox)
         self.counter_updates += 1
