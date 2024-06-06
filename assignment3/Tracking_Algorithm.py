@@ -5,8 +5,9 @@ from Tracker import Tracker
 
 
 class TrackingAlgorithm:
-    def __init__(self, max_age=5):
+    def __init__(self, max_age=5, initialize_age=5):
         self.max_age = max_age
+        self.initialize_age = initialize_age
         self.trackers = []
         self.count = 0
 
@@ -38,7 +39,7 @@ class TrackingAlgorithm:
 
         result = []
         for tracker in self.trackers:
-            if tracker.counter_last_update == 0:
+            if tracker.counter_last_update == 0 and tracker.counter_updates >= self.initialize_age:
                 result.append(np.concatenate((tracker.current_position, [tracker.id])))
 
         return np.array(result)
