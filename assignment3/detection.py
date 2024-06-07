@@ -1,17 +1,22 @@
+import warnings
 import torch
 import torchvision
 from PIL import Image
 import torchvision.transforms as T
 from typing import Tuple
 import matplotlib.pyplot as plt
-
+from alive_progress import alive_it, alive_bar
+import logging
 import os
 
-# colors for visualization
-COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
-          [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
 
-CLASSES = [
+__logger = logging.getLogger('alive_progress')
+
+# colors for visualization
+__COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
+            [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
+
+__CLASSES = [
     'N/A', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
     'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A',
     'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse',
@@ -29,7 +34,17 @@ CLASSES = [
 ]
 
 
-def _convert_bbox(bbox: torch.Tensor) -> torch.Tensor:
+# suppress warnings related to our weights choice
+warnings.filterwarnings('ignore')
+__model = torch.hub.load(
+        'facebookresearch/detr:main',
+        'detr_resnet50',
+        pretrained=True,
+    )
+warnings.filterwarnings('default')
+
+
+def __convert_bbox(bbox: torch.Tensor) -> torch.Tensor:
     """
     Converts the bounding box specified by its center coordinates and its size to
     a bbox expressed by the coordinates of its vertices.
@@ -41,7 +56,7 @@ def _convert_bbox(bbox: torch.Tensor) -> torch.Tensor:
     return torch.stack(b, dim=1)
 
 
-def _rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tensor:
+def __rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tensor:
     """
     Converts the bbox specified by its center coordinates in [0, 1] and its size to
     a bbox expressed by the coordinates of its vertices rescaled with respect to the image size.
@@ -50,7 +65,7 @@ def _rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tensor
     :return: the bounding box as `[x_1, y_1, x_2, y_2]` in image scale
     """
     img_w, img_h = img_size
-    bbox = _convert_bbox(bbox)
+    bbox = __convert_bbox(bbox)
     bbox = bbox * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
     return bbox
 
@@ -79,14 +94,14 @@ def detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=True
     to_keep = probs.max(dim=-1).values > confidence_threshold
     probs = probs[to_keep]
 
-    bboxes_scaled = _rescale_bbox(outputs['pred_boxes'][0, to_keep], img_size)
+    bboxes_scaled = __rescale_bbox(outputs['pred_boxes'][0, to_keep], img_size)
 
     confidence_scores, bboxes = [], []
 
     if peopleOnly:
         for prob, bbox in zip(probs, bboxes_scaled.tolist()):
             cl = prob.argmax()
-            if CLASSES[cl] != 'person':
+            if __CLASSES[cl] != 'person':
                 continue
             confidence_scores.append(prob[cl])
             bboxes.append(bbox)
@@ -101,14 +116,14 @@ def detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=True
 def plot_results(pil_img, prob, boxes):
     plt.imshow(pil_img)
     ax = plt.gca()
-    for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), COLORS * 100):
+    for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), __COLORS * 100):
         # if conf_score is 0-dimensional, there's a single confidence score per bounding box
         # so only people are being detected
         if len(p.shape) == 0:
             text = f'{p:0.2f}'
         else:
             cl = p.argmax()
-            text = f'{CLASSES[cl]}: {p[cl]:0.2f}'
+            text = f'{__CLASSES[cl]}: {p[cl]:0.2f}'
         ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
                                    fill=False, color=c, linewidth=3))
         ax.text(xmin, ymin, text, fontsize=15,
@@ -124,6 +139,95 @@ def show_video_detections(frames_path):
         img = Image.open(os.path.join(path, img_path))
         conf_scores, bboxes_scaled = detect(model, img, peopleOnly=True)
         plot_results(img, conf_scores, bboxes_scaled)
+
+
+def __get_dir_path(video_name):
+    data_dir = 'test/' if __is_test_video(video_name) else 'train/'
+    video_dir_path = os.path.join('MOT17/', data_dir, video_name)
+    return video_dir_path
+
+
+def __detect_video(video_dir_path, conf_treshold=0.5, peopleOnly=True):
+    seq_path = os.path.join(video_dir_path + '/', 'img1')
+    fnames = os.listdir(seq_path)
+    for frame_id, fname in alive_it(
+            zip(range(1, len(fnames) + 1), fnames),
+            total=len(fnames),
+            title='Detecting video frames...'):
+        img = Image.open(os.path.join(seq_path + '/', fname))
+        conf_scores, bboxes = detect(__model, img, confidence_threshold=conf_treshold, peopleOnly=peopleOnly)
+        __cache_detections(video_dir_path, frame_id, conf_scores, bboxes)
+        yield conf_scores, bboxes
+
+
+def __load_detections(video_dir_path):
+    seq_path = os.path.join(video_dir_path + '/', 'img1')
+    frame_count = len(os.listdir(seq_path))
+
+    cache_file_path = os.path.join(video_dir_path, 'detections.txt')
+    assert os.path.exists(cache_file_path)
+    with (open(cache_file_path, 'r') as f):
+        lines = f.readlines()
+        # check if cached detection is incomplete
+        if len(lines) < frame_count:
+            warnings.warn(f'Video frame count is {frame_count}. The detected cache file '
+                          f'only contains detections for {len(lines)} frames.')
+        current_frame = 1
+        current_conf, current_bboxes = [], []
+        with alive_bar(total=len(lines), title='Reading cache file...') as bar:
+            for line in lines:
+                frame_id, x_1, y_1, x_2, y_2, conf_score = line.strip().split(',')
+                # check if we finished reading all the detections for this frame
+                if int(frame_id) != current_frame:
+                    conf_scores, bboxes = (
+                        torch.tensor(current_conf, dtype=torch.float32),
+                        torch.tensor(current_bboxes, dtype=torch.float32)
+                    )
+                    current_conf = []
+                    current_bboxes = []
+                    current_frame += 1
+                    # update progress bar
+                    yield conf_scores, bboxes
+                else:
+                    current_conf += [float(conf_score)]
+                    current_bboxes += [[float(x_1), float(y_1), float(x_2), float(y_2)]]
+                bar()
+
+
+def __cache_detections(video_dir_path, frame_id, conf_scores, bboxes):
+    fpath = os.path.join(video_dir_path, 'detections.txt')
+    with open(fpath, mode='a') as f:
+        for conf, (x_1, y_1, x_2, y_2) in zip(conf_scores, bboxes.tolist()):
+            f.write(f'{frame_id},{x_1},{y_1},{x_2},{y_2},{conf}\n')
+
+
+def __is_test_video(video_name):
+    assert video_name.startswith('MOT17-')
+    return any([f for f in os.listdir('MOT17/test') if f == video_name])
+
+
+def get_detections(video_name):
+    """
+    Outputs the detections for each frame of the specified video, along with their confidence score.
+    Be aware that stopping this function from running until its end will create an incomplete detection file.
+
+    :param video_name: the name of the video to be detected
+    :return: a generator yielding two torch tensors `(conf_scores, bboxes)` for each frame.
+        Note that `conf_scores` is a 1D (N, ) tensor, while `bboxes` is a 2D (N, 4) tensor, where N is the
+        number of frames in the video.
+        Also note that each bbox is expressed as `[x_1, y_1, x_2, y_2]`.
+    """
+    video_dir_path = __get_dir_path(video_name)
+
+    # check if detections cache file exists
+    if os.path.exists(os.path.join(video_dir_path, 'detections.txt')):
+        # if so, load detections from cache
+        logging.info(f'Using detections cache file for {video_name}.')
+        return __load_detections(video_dir_path)
+    else:
+        logging.info(f'No detections cache file found for {video_name}. '
+                     f'Detector will now process the video.')
+        return __detect_video(video_dir_path)
 
 
 if __name__ == '__main__':
