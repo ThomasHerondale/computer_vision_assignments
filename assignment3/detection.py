@@ -12,27 +12,6 @@ import os
 
 __logger = logging.getLogger('alive_progress')
 
-# colors for visualization
-__COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
-            [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
-
-__CLASSES = [
-    'N/A', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-    'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A',
-    'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse',
-    'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'N/A', 'backpack',
-    'umbrella', 'N/A', 'N/A', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis',
-    'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove',
-    'skateboard', 'surfboard', 'tennis racket', 'bottle', 'N/A', 'wine glass',
-    'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich',
-    'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',
-    'chair', 'couch', 'potted plant', 'bed', 'N/A', 'dining table', 'N/A',
-    'N/A', 'toilet', 'N/A', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
-    'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'N/A',
-    'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
-    'toothbrush'
-]
-
 
 # suppress warnings related to our weights choice
 warnings.filterwarnings('ignore')
@@ -169,9 +148,10 @@ def __load_detections(video_dir_path):
     with (open(cache_file_path, 'r') as f):
         lines = f.readlines()
         # check if cached detection is incomplete
-        if len(lines) < frame_count:
+        last_frame = int(lines[-1].strip().split(',')[0])
+        if last_frame < frame_count:
             warnings.warn(f'Video frame count is {frame_count}. The detected cache file '
-                          f'only contains detections for {len(lines)} frames.')
+                          f'only contains detections for {last_frame} frames.')
         current_frame = 1
         current_conf, current_bboxes = [], []
         with alive_bar(total=len(lines), title='Reading cache file...') as bar:
