@@ -187,13 +187,3 @@ def get_detections(video_name):
         logging.info(f'No detections cache file found for {video_name}. '
                      f'Detector will now process the video.')
         return __detect_video(video_dir_path)
-
-
-if __name__ == '__main__':
-    path = "MOT17/train/MOT17-02-DPM/img1"
-    model = torch.hub.load(
-        'facebookresearch/detr:main',
-        'detr_resnet50',
-        pretrained=True,
-    )
-    show_video_detections(path)
