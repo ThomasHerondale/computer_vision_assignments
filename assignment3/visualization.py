@@ -13,15 +13,21 @@ __COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
             [0.494, 0.184, 0.556], [0.466, 0.674, 0.188], [0.301, 0.745, 0.933]]
 
 
-def show_video_tracking(video_name: str, waitKeys: bool = False):
+def show_video_tracking(video_name: str, waitKeys: bool = False, bufferize: bool = True):
     """
     Shows the tracking algorithm predicted trajectories for the specified video.
     :param video_name: the name of the video
     :param waitKeys: whether the algorithm has to wait for a key-press to go to the next frame or not
+    :param bufferize: whether to track all frames before showing results or to track each frame
+            on the fly before showing it. This will be ignored if results are already cached.
     """
     video_dir_path = get_dir_path(video_name)
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     fnames = os.listdir(seq_path)
+
+    # work generator until end of the video
+    if bufferize:
+        _ = [_ for _ in get_detections(video_name)]
 
     tracker = TrackingAlgorithm()  # Inizializza il tracker
 
@@ -39,15 +45,21 @@ def show_video_tracking(video_name: str, waitKeys: bool = False):
         __plot_results(img, waitKeys, tracked_people=tracked_people)
 
 
-def show_video_detections(video_name: str, waitKeys: bool = False):
+def show_video_detections(video_name: str, waitKeys: bool = False, bufferize: bool = True):
     """
     Shows the detection algorithm predictions for the specified video.
     :param video_name: the name of the video
     :param waitKeys: whether the algorithm has to wait for a key-press to go to the next frame or not
+    :param bufferize : whether to detect all frames before showing results or to detect each frame
+    on the fly before showing it. This will be ignored if results are already cached.
     """
     video_dir_path = get_dir_path(video_name)
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     fnames = os.listdir(seq_path)
+
+    # work generator until end of the video
+    if bufferize:
+        _ = [_ for _ in get_detections(video_name)]
 
     fig = plt.figure()
     fig.canvas.mpl_connect('close_event', lambda event: exit())
