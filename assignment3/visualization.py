@@ -27,13 +27,13 @@ def show_video_tracking(video_name: str, waitKeys: bool = False, bufferize: bool
 
     # work generator until end of the video
     if bufferize:
-        _ = [_ for _ in get_detections(video_name)]
+        _ = [_ for _ in get_detections(video_name, people_only=True)]
 
     tracker = TrackingAlgorithm()  # Inizializza il tracker
 
     fig = plt.figure()
     fig.canvas.mpl_connect('close_event', lambda event: exit())
-    for img_path, (conf_scores, bboxes_scaled) in zip(fnames, get_detections(video_name)):
+    for img_path, (conf_scores, bboxes_scaled) in zip(fnames, get_detections(video_name, people_only=True)):
         img = Image.open(os.path.join(seq_path, img_path))
 
         # Converto il tensore in un array numpy per comodità
@@ -45,13 +45,17 @@ def show_video_tracking(video_name: str, waitKeys: bool = False, bufferize: bool
         __plot_results(img, waitKeys, tracked_people=tracked_people)
 
 
-def show_video_detections(video_name: str, waitKeys: bool = False, bufferize: bool = True):
+def show_video_detections(video_name: str,
+                          waitKeys: bool = False,
+                          bufferize: bool = True,
+                          people_only: bool = False):
     """
     Shows the detection algorithm predictions for the specified video.
     :param video_name: the name of the video
     :param waitKeys: whether the algorithm has to wait for a key-press to go to the next frame or not
     :param bufferize : whether to detect all frames before showing results or to detect each frame
     on the fly before showing it. This will be ignored if results are already cached.
+    :param people_only: whether to instruct the tracker to detect only people in the video or not
     """
     video_dir_path = get_dir_path(video_name)
     seq_path = os.path.join(video_dir_path + '/', 'img1')
@@ -59,11 +63,11 @@ def show_video_detections(video_name: str, waitKeys: bool = False, bufferize: bo
 
     # work generator until end of the video
     if bufferize:
-        _ = [_ for _ in get_detections(video_name)]
+        _ = [_ for _ in get_detections(video_name, people_only=people_only)]
 
     fig = plt.figure()
     fig.canvas.mpl_connect('close_event', lambda event: exit())
-    for (conf, bboxes), fname in zip(get_detections(video_name), fnames):
+    for (conf, bboxes), fname in zip(get_detections(video_name, people_only=people_only), fnames):
         img = Image.open(os.path.join(seq_path, fname))
         __plot_results(img, waitKeys, prob=conf, bboxes=bboxes)
 
@@ -116,5 +120,5 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=Non
 
 if __name__ == '__main__':
     video_name = 'MOT17-05-SDP'
-    show_video_tracking(video_name, waitKeys=True)
-    # show_video_detections(video_name, waitKeys=True)
+    show_video_tracking(video_name, waitKeys=False)
+    # show_video_detections(video_name, waitKeys=True, people_only=False)

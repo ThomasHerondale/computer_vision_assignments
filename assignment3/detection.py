@@ -67,7 +67,7 @@ def __rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tenso
     return bbox
 
 
-def __detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=True) -> (torch.Tensor, torch.Tensor):
+def __detect(model, img, transform=None, confidence_threshold=0.5, people_only=True) -> (torch.Tensor, torch.Tensor):
     # default preprocessing pipeline
     if transform is None:
         transform = T.Compose([
@@ -95,7 +95,7 @@ def __detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=Tr
 
     confidence_scores, bboxes = [], []
 
-    if peopleOnly:
+    if people_only:
         for prob, bbox in zip(probs, bboxes_scaled.tolist()):
             cl = prob.argmax()
             if __CLASSES[cl] != 'person':
@@ -110,7 +110,7 @@ def __detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=Tr
     return torch.tensor(confidence_scores, dtype=torch.float32), torch.tensor(bboxes, dtype=torch.float32)
 
 
-def __detect_video(video_dir_path, conf_treshold=0.5, peopleOnly=True):
+def __detect_video(video_dir_path: str, people_only: bool, conf_threshold: float = 0.5):
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     fnames = os.listdir(seq_path)
     for frame_id, fname in alive_it(
@@ -118,8 +118,9 @@ def __detect_video(video_dir_path, conf_treshold=0.5, peopleOnly=True):
             total=len(fnames),
             title='Detecting video frames...'):
         img = Image.open(os.path.join(seq_path + '/', fname))
-        conf_scores, bboxes = __detect(__model, img, confidence_threshold=conf_treshold, peopleOnly=peopleOnly)
-        __cache_detections(video_dir_path, frame_id, conf_scores, bboxes)
+        conf_scores, bboxes = __detect(__model, img, confidence_threshold=conf_threshold, people_only=people_only)
+        if people_only:
+            __cache_detections(video_dir_path, frame_id, conf_scores, bboxes)
         yield conf_scores, bboxes
 
 
@@ -165,16 +166,18 @@ def __cache_detections(video_dir_path, frame_id, conf_scores, bboxes):
             f.write(f'{frame_id},{x_1},{y_1},{x_2},{y_2},{conf}\n')
 
 
-def get_detections(video_name):
+def get_detections(video_name: str, people_only: bool):
     """
     Outputs the detections for each frame of the specified video, along with their confidence score.
-    Be aware that stopping this function from running until its end will create an incomplete detection file.
+    Be aware that stopping this function from running until its end might create an incomplete detection cache file.
 
     :param video_name: the name of the video to be detected
+    :param people_only: whether to instruct the tracker to detect only people in the video or not. Note that
+    this parameter will be ignored if a cache file exists, since caching is only allowed for people detections.
     :return: a generator yielding two torch tensors `(conf_scores, bboxes)` for each frame.
-        Note that `conf_scores` is a 1D (N, ) tensor, while `bboxes` is a 2D (N, 4) tensor, where N is the
-        number of frames in the video.
-        Also note that each bbox is expressed as `[x_1, y_1, x_2, y_2]`.
+    Note that `conf_scores` is a 1D (N, ) tensor, while `bboxes` is a 2D (N, 4) tensor, where N is the
+    number of frames in the video.
+    Also note that each bbox is expressed as `[x_1, y_1, x_2, y_2]`.
     """
     video_dir_path = get_dir_path(video_name)
 
@@ -182,8 +185,11 @@ def get_detections(video_name):
     if os.path.exists(os.path.join(video_dir_path, 'detections.txt')):
         # if so, load detections from cache
         logging.info(f'Using detections cache file for {video_name}.')
+        if not people_only:
+            warnings.warn("Loading of non-people detections from cache is not supported. "
+                          "Parameter will be ignored")
         return __load_detections(video_dir_path)
     else:
         logging.info(f'No detections cache file found for {video_name}. '
                      f'Detector will now process the video.')
-        return __detect_video(video_dir_path)
+        return __detect_video(video_dir_path, people_only=people_only)
