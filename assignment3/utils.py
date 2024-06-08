@@ -1,6 +1,9 @@
+import os
+
 import numpy as np
 import cv2
 from scipy.optimize import linear_sum_assignment
+
 
 def iou(a: np.ndarray,b: np.ndarray) -> float:
     """
@@ -37,3 +40,13 @@ def compare_boxes(detections,trackers,iou_thresh=0.3):
     return best_indices,unmatched_detection_indices,unmatched_trackers_indices
 
 
+def get_dir_path(video_name: str) -> str:
+    """
+    Returns the path to the directory for the specified video.
+    :param video_name: the name of the video
+    :return: the path to the directory 'MOT17/{train|test}/{video_name}'
+    """
+    assert video_name.startswith('MOT17-')
+    is_test = any([f for f in os.listdir('MOT17/test') if f == video_name])
+    data_dir = 'test/' if is_test else 'train/'
+    return os.path.join('MOT17/', data_dir, video_name)

@@ -1,14 +1,14 @@
-import warnings
-import torch
-import torchvision
-from PIL import Image
-import torchvision.transforms as T
-from typing import Tuple
-import matplotlib.pyplot as plt
-from alive_progress import alive_it, alive_bar
 import logging
 import os
+import warnings
+from typing import Tuple
 
+import torch
+import torchvision.transforms as T
+from PIL import Image
+from alive_progress import alive_it, alive_bar
+
+from assignment3.utils import get_dir_path
 
 __CLASSES = [
     'N/A', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
@@ -67,7 +67,7 @@ def __rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tenso
     return bbox
 
 
-def detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=True) -> (torch.Tensor, torch.Tensor):
+def __detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=True) -> (torch.Tensor, torch.Tensor):
     # default preprocessing pipeline
     if transform is None:
         transform = T.Compose([
@@ -110,40 +110,6 @@ def detect(model, img, transform=None, confidence_threshold=0.5, peopleOnly=True
     return torch.tensor(confidence_scores, dtype=torch.float32), torch.tensor(bboxes, dtype=torch.float32)
 
 
-def plot_results(pil_img, prob, boxes):
-    plt.imshow(pil_img)
-    ax = plt.gca()
-    for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), __COLORS * 100):
-        # if conf_score is 0-dimensional, there's a single confidence score per bounding box
-        # so only people are being detected
-        if len(p.shape) == 0:
-            text = f'{p:0.2f}'
-        else:
-            cl = p.argmax()
-            text = f'{__CLASSES[cl]}: {p[cl]:0.2f}'
-        ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-                                   fill=False, color=c, linewidth=3))
-        ax.text(xmin, ymin, text, fontsize=15,
-                bbox=dict(facecolor='yellow', alpha=0.5))
-    plt.axis('off')
-    plt.pause(0.1)
-
-
-def show_video_detections(frames_path):
-    plt.figure(figsize=(16, 10))
-    for img_path in os.listdir(frames_path):
-        plt.clf()
-        img = Image.open(os.path.join(path, img_path))
-        conf_scores, bboxes_scaled = detect(model, img, peopleOnly=True)
-        plot_results(img, conf_scores, bboxes_scaled)
-
-
-def __get_dir_path(video_name):
-    data_dir = 'test/' if __is_test_video(video_name) else 'train/'
-    video_dir_path = os.path.join('MOT17/', data_dir, video_name)
-    return video_dir_path
-
-
 def __detect_video(video_dir_path, conf_treshold=0.5, peopleOnly=True):
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     fnames = os.listdir(seq_path)
@@ -152,7 +118,7 @@ def __detect_video(video_dir_path, conf_treshold=0.5, peopleOnly=True):
             total=len(fnames),
             title='Detecting video frames...'):
         img = Image.open(os.path.join(seq_path + '/', fname))
-        conf_scores, bboxes = detect(__model, img, confidence_threshold=conf_treshold, peopleOnly=peopleOnly)
+        conf_scores, bboxes = __detect(__model, img, confidence_threshold=conf_treshold, peopleOnly=peopleOnly)
         __cache_detections(video_dir_path, frame_id, conf_scores, bboxes)
         yield conf_scores, bboxes
 
@@ -199,11 +165,6 @@ def __cache_detections(video_dir_path, frame_id, conf_scores, bboxes):
             f.write(f'{frame_id},{x_1},{y_1},{x_2},{y_2},{conf}\n')
 
 
-def __is_test_video(video_name):
-    assert video_name.startswith('MOT17-')
-    return any([f for f in os.listdir('MOT17/test') if f == video_name])
-
-
 def get_detections(video_name):
     """
     Outputs the detections for each frame of the specified video, along with their confidence score.
@@ -215,7 +176,7 @@ def get_detections(video_name):
         number of frames in the video.
         Also note that each bbox is expressed as `[x_1, y_1, x_2, y_2]`.
     """
-    video_dir_path = __get_dir_path(video_name)
+    video_dir_path = get_dir_path(video_name)
 
     # check if detections cache file exists
     if os.path.exists(os.path.join(video_dir_path, 'detections.txt')):
