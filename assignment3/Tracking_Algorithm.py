@@ -1,7 +1,7 @@
-
 import numpy as np
 from utils import compare_boxes
 from Tracker import Tracker
+from matching import matching
 
 
 class TrackingAlgorithm:
@@ -22,14 +22,15 @@ class TrackingAlgorithm:
         """
         Aggiorna le informazioni sui trackers
         """
-        #Creo una lista contenente i miei target ancora "in vita"
+        # Creo una lista contenente i miei target ancora "in vita"
         self.trackers = [tracker for tracker in self.trackers if tracker.counter_last_update <= self.max_age]
 
-        #Creo una lista contenente le bounding box dei miei target precedentemente selezionati
+        # Creo una lista contenente le bounding box dei miei target precedentemente selezionati
         bboxes_trackers = np.array([tracker.current_position for tracker in self.trackers])
 
-        #Il metodo compare compare_boxes l'ho preso paro paro online, ma sarebbe quello che cipo deve implementare praticamente
-        matched, unmatched_detections, unmatched_trackers = compare_boxes(detections, bboxes_trackers)
+        # Il metodo compare compare_boxes l'ho preso paro paro online, ma sarebbe quello che cipo deve implementare
+        #matched, unmatched_detections, unmatched_trackers = compare_boxes(detections, bboxes_trackers)
+        matched, unmatched_trackers, unmatched_detections = matching(detections, bboxes_trackers)
 
         for detection_num, tracker_num in matched:
             self.trackers[tracker_num].update(detections[detection_num], img)

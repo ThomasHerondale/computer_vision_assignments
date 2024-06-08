@@ -1,9 +1,9 @@
 import math
-
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 import torch
 from detection import get_detections
+
 
 def convert_bbx(bbox):
     """
@@ -15,13 +15,13 @@ def convert_bbx(bbox):
     h = bbox[3] - bbox[1]
     area = w * h
     aspect_ratio = w / h
-    x_c = (bbox[0] + w) / 2
-    y_c = (bbox[1] + h) / 2
+    x_c = bbox[0] + w / 2
+    y_c = bbox[1] + h / 2
 
     return np.array([x_c, y_c, area, aspect_ratio], dtype=np.float32)
 
 
-def compute_cost(detection_point, tracking_point, threshold: int):
+def compute_cost(detection_point, tracking_point) -> float:
     """
     Function to compute the cost of linking two points. This cost is calculated as euclidian distance
     between the two points.
@@ -29,57 +29,59 @@ def compute_cost(detection_point, tracking_point, threshold: int):
     :param: tracking_point: list of [x_c, y_c, area, aspect_ratio] of the frame in t
     :return: d: is cost of linking two points
     """
-    d_x = detection_point[0] - tracking_point[0]
-    d_y = detection_point[1] - tracking_point[1]
+    d_x = tracking_point[0] - detection_point[0]
+    d_y = tracking_point[1] - detection_point[1]
     d = float(math.sqrt((d_x * d_x) + (d_y * d_y)))
-
+    """
     if d > threshold:
-        d = np.inf  # float('inf')
-
+        d = np.inf # float('inf')
+    """
     return d
 
 
-def calculate_cost_matrix(detection_list, track_list, threshold) -> np.ndarray:
+def calculate_cost_matrix(detection_list, track_list) -> np.ndarray:
 
     cost_matrix = np.zeros((len(track_list), len(detection_list)), np.float32)
-    print(cost_matrix)
+    # print("Matrice di soli zeri: ", cost_matrix)
 
     for trak_i, track in enumerate(track_list):
         for det_i, detection in enumerate(detection_list):
-            cost = compute_cost(detection, track, threshold)
+            cost = compute_cost(detection, track)
             cost_matrix[trak_i, det_i] = cost
-    print("----------------------------------")
-    print(cost_matrix)
     return cost_matrix
 
 
-def matching(detections, tracks, threshold: int = 20):
-
-    cost_matrix = calculate_cost_matrix(detections, tracks, threshold)
-
+def matching(detections, tracks, threshold: int = 30):
+    """
+    :param tracks: lista di oggetti alla quale è gia stato assegnato un id
+    """
     track_ind: list[int] = [i for i in range(len(tracks))]
     detect_ind: list[int] = [i for i in range(len(detections))]
 
+    if len(detect_ind) == 0 or len(track_ind) == 0:
+        return [], track_ind, detect_ind
+
+    converted_detections = [convert_bbx(d) for d in detections]
+    converted_tracks = [convert_bbx(t) for t in tracks]
+
+    cost_matrix = calculate_cost_matrix(converted_detections, converted_tracks)
+
     row_ind, col_ind = linear_sum_assignment(cost_matrix)
+    print("Matrice dei costi\n", cost_matrix)
 
     match_list, unmatched_tracks, unmatched_detections = [], [], []
 
-    for col, det_index in enumerate(detect_ind):
-        if col not in col_ind:
-            unmatched_detections.append(det_index)
-
-    for row, track_index in enumerate(track_ind):
-        if row not in row_ind:
-            unmatched_tracks.append(track_index)
+    unmatched_detections = list(set(range(len(detections))) - set(col_ind))
+    unmatched_tracks = list(set(range(len(tracks))) - set(row_ind))
 
     for row, col in zip(row_ind, col_ind):
-        track_index = track_ind[row]
-        detection_ind = detect_ind[col]
+        track_id = track_ind[row]
+        detection_id = detect_ind[col]
         if cost_matrix[row, col] > threshold:
-            unmatched_tracks.append(track_index)
-            unmatched_tracks.append(detection_ind)
+            unmatched_tracks.append(row)
+            unmatched_detections.append(col)
         else:
-            match_list.append((track_index, detection_ind))
-    return match_list, unmatched_tracks, unmatched_detections
+            match_list.append([detection_id, track_id])
 
+    return match_list, unmatched_tracks, unmatched_detections
 
