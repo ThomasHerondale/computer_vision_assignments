@@ -52,7 +52,6 @@ class TrackerTuner:
             raise ValueError("No videos were provided for hyperparameter tuning.")
 
         video_counter = 1
-        combination_counter = 1
 
         combinations_count = len(self.param_combinations())
 
