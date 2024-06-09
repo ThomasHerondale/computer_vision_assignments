@@ -5,11 +5,21 @@ from matching import matching
 
 
 class TrackingAlgorithm:
-    def __init__(self, max_age=5, initialize_age=5):
+    def __init__(self,
+                 max_age=5,
+                 initialize_age=5,
+                 spatial_metric='euclidean',
+                 spatial_metric_threshold=30,
+                 appearance_metric=None,
+                 **kwargs
+                 ):
         self.max_age = max_age
         self.initialize_age = initialize_age
         self.trackers = []
         self.count = 0
+        self.metric_dist_threshold = spatial_metric_threshold
+        self.spatial_metric = spatial_metric
+        self.appearance_metric = appearance_metric
 
     def new_id(self):
         """
@@ -30,7 +40,11 @@ class TrackingAlgorithm:
 
         # Il metodo compare compare_boxes l'ho preso paro paro online, ma sarebbe quello che cipo deve implementare
         #matched, unmatched_detections, unmatched_trackers = compare_boxes(detections, bboxes_trackers)
-        matched, unmatched_trackers, unmatched_detections = matching(detections, bboxes_trackers)
+        matched, unmatched_trackers, unmatched_detections = matching(
+            detections,
+            bboxes_trackers,
+            threshold=self.metric_dist_threshold
+        )
 
         for detection_num, tracker_num in matched:
             self.trackers[tracker_num].update(detections[detection_num], img)

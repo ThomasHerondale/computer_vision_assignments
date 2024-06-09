@@ -51,7 +51,7 @@ def calculate_cost_matrix(detection_list, track_list) -> np.ndarray:
     return cost_matrix
 
 
-def matching(detections, tracks, threshold: int = 30):
+def matching(detections, tracks, threshold: int):
     """
     :param tracks: lista di oggetti alla quale è gia stato assegnato un id
     """
@@ -67,7 +67,7 @@ def matching(detections, tracks, threshold: int = 30):
     cost_matrix = calculate_cost_matrix(converted_detections, converted_tracks)
 
     row_ind, col_ind = linear_sum_assignment(cost_matrix)
-    print("Matrice dei costi\n", cost_matrix)
+    #print("Matrice dei costi\n", cost_matrix)
 
     match_list, unmatched_tracks, unmatched_detections = [], [], []
 
