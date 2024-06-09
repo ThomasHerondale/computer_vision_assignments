@@ -53,8 +53,8 @@ def show_video_detections(video_name: str,
     Shows the detection algorithm predictions for the specified video.
     :param video_name: the name of the video
     :param waitKeys: whether the algorithm has to wait for a key-press to go to the next frame or not
-    :param bufferize : whether to detect all frames before showing results or to detect each frame
-    on the fly before showing it. This will be ignored if results are already cached.
+    :param bufferize: whether to detect all frames before showing results or to detect each frame
+     on the fly before showing it. This will be ignored if results are already cached.
     :param people_only: whether to instruct the tracker to detect only people in the video or not
     """
     video_dir_path = get_dir_path(video_name)
@@ -119,6 +119,6 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=Non
 
 
 if __name__ == '__main__':
-    video_name = 'MOT17-05-SDP'
-    show_video_tracking(video_name, waitKeys=False)
+    video_name = 'MOT17-02-DPM'
+    show_video_tracking(video_name, waitKeys=True)
     # show_video_detections(video_name, waitKeys=True, people_only=False)
