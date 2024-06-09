@@ -1,7 +1,7 @@
 import logging
 import os
 import warnings
-from typing import Tuple
+from typing import Tuple, Optional, Dict, Any
 
 import torch
 import torchvision.transforms as T
@@ -27,17 +27,15 @@ __CLASSES = [
     'toothbrush'
 ]
 
-
 __logger = logging.getLogger('alive_progress')
-
 
 # suppress warnings related to our weights choice
 warnings.filterwarnings('ignore')
 __model = torch.hub.load(
-        'facebookresearch/detr:main',
-        'detr_resnet50',
-        pretrained=True,
-    )
+    'facebookresearch/detr:main',
+    'detr_resnet50',
+    pretrained=True,
+)
 warnings.filterwarnings('default')
 
 
@@ -110,9 +108,11 @@ def __detect(model, img, transform=None, confidence_threshold=0.5, people_only=T
     return torch.tensor(confidence_scores, dtype=torch.float32), torch.tensor(bboxes, dtype=torch.float32)
 
 
-def __detect_video(video_dir_path: str, people_only: bool, progress_bar_prefix, conf_threshold: float = 0.5):
+def __detect_video(video_dir_path: str, people_only: bool, progress_bar_prefix, conf_threshold):
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     fnames = os.listdir(seq_path)
+    cache_fpath = os.path.join(video_dir_path, __get_next_cache_fname(video_dir_path))
+    __write_cache_header(cache_fpath, {'conf_threshold': conf_threshold})
     for frame_id, fname in alive_it(
             zip(range(1, len(fnames) + 1), fnames),
             total=len(fnames),
@@ -120,18 +120,24 @@ def __detect_video(video_dir_path: str, people_only: bool, progress_bar_prefix, 
         img = Image.open(os.path.join(seq_path + '/', fname))
         conf_scores, bboxes = __detect(__model, img, confidence_threshold=conf_threshold, people_only=people_only)
         if people_only:
-            __cache_detections(video_dir_path, frame_id, conf_scores, bboxes)
+            __cache_detections(
+                cache_fpath,
+                frame_id,
+                conf_scores,
+                bboxes,
+            )
         yield conf_scores, bboxes
 
 
-def __load_detections(video_dir_path, progress_bar_prefix):
+def __load_detections(video_dir_path, cache_fname, progress_bar_prefix):
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     frame_count = len(os.listdir(seq_path))
 
-    cache_file_path = os.path.join(video_dir_path, 'detections.txt')
+    cache_file_path = os.path.join(video_dir_path, cache_fname)
     assert os.path.exists(cache_file_path)
     with (open(cache_file_path, 'r') as f):
-        lines = f.readlines()
+        # skip first line containing hyperparameters
+        lines = f.readlines()[1:]
         # check if cached detection is incomplete
         last_frame = int(lines[-1].strip().split(',')[0])
         if last_frame < frame_count:
@@ -139,7 +145,7 @@ def __load_detections(video_dir_path, progress_bar_prefix):
                           f'only contains detections for {last_frame} frames.')
         current_frame = 1
         current_conf, current_bboxes = [], []
-        with alive_bar(total=len(lines), title=f'{progress_bar_prefix} Reading cache file...') as bar:
+        with alive_bar(total=len(lines), title=f'{progress_bar_prefix} Reading detections cache file...') as bar:
             for line in lines:
                 frame_id, x_1, y_1, x_2, y_2, conf_score = line.strip().split(',')
                 # check if we finished reading all the detections for this frame
@@ -159,17 +165,62 @@ def __load_detections(video_dir_path, progress_bar_prefix):
                 bar()
 
 
-def __cache_detections(video_dir_path, frame_id, conf_scores, bboxes):
-    fpath = os.path.join(video_dir_path, 'detections.txt')
-    with open(fpath, mode='a') as f:
+def __write_cache_header(cache_fpath, hyperparameters):
+    with open(cache_fpath, mode='w') as f:
+        # write header with hyperparameter values
+        param_str = ''
+        for k, v in hyperparameters.items():
+            param_str = f'{k}={str(v)},'
+        f.write(param_str + '\n')
+
+
+def __cache_detections(cache_fpath, frame_id, conf_scores, bboxes):
+    with open(cache_fpath, mode='a') as f:
         for conf, (x_1, y_1, x_2, y_2) in zip(conf_scores, bboxes.tolist()):
             f.write(f'{frame_id},{x_1},{y_1},{x_2},{y_2},{conf}\n')
+
+
+def __check_cache_hyperparameter_match(video_dir_path: str, hyperparameters: Dict[str, Any]) -> Optional[str]:
+    def match(params, hyperparameters):
+        for param in params:
+            if param:
+                k, v = param.split('=')
+                # if parameter doesn't match, skip to the next file
+                if hyperparameters[k] != v:
+                    return False
+        return True
+
+    for cache_fname in __get_cache_fnames(video_dir_path):
+        with (open(os.path.join(video_dir_path, cache_fname), 'r') as f):
+            # first line contains parameter list
+            line = f.readline()
+            # get all (param_name, value) pairs
+            params = line.strip().split(',')
+            if match(params, hyperparameters):
+                return cache_fname
+    return None
+
+
+def __get_next_cache_fname(video_dir_path: str) -> str:
+    max_n = -1
+    for fname in __get_cache_fnames(video_dir_path):
+        _, s = fname.split('_')
+        n, _ = s.split('.')
+        if int(n) > max_n:
+            max_n = int(n)
+
+    idx = max_n + 1 if max_n != -1 else '1'
+    return f'detections_{idx}.txt'
+
+
+def __get_cache_fnames(video_dir_path):
+    return [fname for fname in os.listdir(video_dir_path) if fname.startswith('detections_')]
 
 
 def get_detections(
         video_name: str,
         people_only: bool,
-        progress_bar_prefix: str = None,
+        progress_bar_prefix: str = '',
         conf_threshold: float = 0.5):
     """
     Outputs the detections for each frame of the specified video, along with their confidence score.
@@ -188,20 +239,33 @@ def get_detections(
     """
     video_dir_path = get_dir_path(video_name)
 
-    # check if detections cache file exists
-    if os.path.exists(os.path.join(video_dir_path, 'detections.txt')):
-        # if so, load detections from cache
-        logging.info(f'Using detections cache file for {video_name}.')
+    # check for existing cache file with this hyperparameters combination
+    hyperparameters = {'conf_threshold': str(conf_threshold)}
+    cache_fname = __check_cache_hyperparameter_match(
+        video_dir_path,
+        hyperparameters
+    )
+    if cache_fname:
+        logging.info(f'Using detections cache file {cache_fname} for {video_name}.')
         if not people_only:
             warnings.warn("Loading of non-people detections from cache is not supported. "
                           "Parameter will be ignored")
-        return __load_detections(video_dir_path, progress_bar_prefix)
+        return __load_detections(
+            video_dir_path,
+            cache_fname,
+            progress_bar_prefix=progress_bar_prefix,
+        )
     else:
-        logging.info(f'No detections cache file found for {video_name}. '
-                     f'Detector will now process the video.')
+        logging.info(f'No detections cache file found for {video_name} and this hyperparameter combination '
+                     f'{hyperparameters}. Detector will now process the video.')
         return __detect_video(
             video_dir_path,
             people_only=people_only,
             progress_bar_prefix=progress_bar_prefix,
             conf_threshold=conf_threshold
         )
+
+
+if __name__ == '__main__':
+    for _ in get_detections('MOT17-05-SDP', people_only=True, conf_threshold=0.5):
+        pass
