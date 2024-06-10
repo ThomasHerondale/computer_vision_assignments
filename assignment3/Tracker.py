@@ -35,13 +35,14 @@ class Tracker:
         self.counter_last_update += 1
         return self.bbox
 
-    def update(self, bbox, img):
+    def update(self, bbox, conf_score, img):
         """
         Update the tracked bounding box coordinates, increase the counter_updates variable and
          inizialize the counter_last_update variable to zero
         """
         self.bbox_difference = bbox - self.bbox
         self.bbox = bbox
+        self.conf_score = conf_score
         self.descriptor = self.compute_descriptor(img, bbox)
         self.counter_updates += 1
         self.counter_last_update = 0
