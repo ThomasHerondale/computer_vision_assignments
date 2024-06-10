@@ -46,7 +46,7 @@ def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=No
     except FileExistsError:
         pass
 
-    file_path = os.path.join(directory_path, video_name)
+    file_path = os.path.join(directory_path, f"{video_name}.txt")
 
     # se il file già esiste lo elimino
     if os.path.exists(file_path):
@@ -60,7 +60,7 @@ def compute_report():
 
     command = ("python TrackEval/scripts/run_mot_challenge.py --BENCHMARK MOT17 --SPLIT_TO_EVAL train "
                "--TRACKERS_TO_EVAL"
-               "MPNTrack --METRICS HOTA CLEAR Identity VACE --USE_PARALLEL False --NUM_PARALLEL_CORES 1")
+               "my_trackers --METRICS HOTA CLEAR Identity VACE --USE_PARALLEL False --NUM_PARALLEL_CORES 1")
 
     try:
         result = subprocess.run(command, check=True, capture_output=True, text=True)
