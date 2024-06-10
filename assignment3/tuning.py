@@ -101,6 +101,7 @@ class TrackerTuner:
 
         self._cleanup()
 
+    @property
     def results(self):
         return [*self.__tuning_results]
 
@@ -152,6 +153,9 @@ if __name__ == '__main__':
     tuner = TrackerTuner()
     tuner.register_hyperparameter('detector__conf_threshold', [2, 5])
     tuner.register_hyperparameter('detector__iou_threshold', [3, 9])
-    tuner.tune(['MOT17-05-SDP', 'MOT17-09-DPM'])
-    for params in tuner.results():
+    tuner.tune(['MOT17-05-SDP', 'MOT17-09-DPM', 'MOT17-04-DPM'])
+    for params in tuner.results:
         print(params)
+    print(tuner.best_aggregated_score)
+    print(tuner.best_scores)
+    print(tuner.best_params)
