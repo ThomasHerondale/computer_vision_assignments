@@ -7,7 +7,7 @@ from PIL import Image
 
 from Tracking_Algorithm import TrackingAlgorithm
 from assignment3.utils import get_dir_path
-from detection import get_detections, __CLASSES
+from detection import get_detections, CLASSES
 
 # colors for visualization
 __COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
@@ -122,7 +122,7 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes: torch.Tensor = None, tr
         elif mode == 'detections':
             p, bbox, c = e
             cl = p.argmax()
-            text = f'{__CLASSES[cl]}: {p[cl]:0.2f}'
+            text = f'{CLASSES[cl]}: {p[cl]:0.2f}'
         elif mode == 'detections_people_only':
             # _ is needed to ignore indices of enumerate()
             p, (_, bbox), c = e

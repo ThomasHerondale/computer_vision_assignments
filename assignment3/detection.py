@@ -10,7 +10,7 @@ from alive_progress import alive_it, alive_bar
 
 from assignment3.utils import get_dir_path
 
-__CLASSES = [
+CLASSES = [
     'N/A', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
     'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A',
     'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse',
@@ -83,7 +83,7 @@ def __detect(model, img, transform=None, confidence_threshold=0.5, people_only=T
     if people_only:
         for prob, bbox in zip(probs, bboxes_scaled.tolist()):
             cl = prob.argmax()
-            if __CLASSES[cl] != 'person':
+            if CLASSES[cl] != 'person':
                 continue
             confidence_scores.append(prob[cl])
             bboxes.append(bbox)
