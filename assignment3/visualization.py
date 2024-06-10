@@ -2,6 +2,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 from PIL import Image
 
 from Tracking_Algorithm import TrackingAlgorithm
@@ -72,6 +73,19 @@ def show_video_detections(video_name: str,
         __plot_results(img, waitKeys, prob=conf, bboxes=bboxes)
 
 
+def __convert_bbox(bbox) -> torch.Tensor:
+    """
+    Converts the bounding box specified by its center coordinates and its size to
+    a bbox expressed by the coordinates of its vertices.
+    :param bbox: bounding box as `[c_x, c_y, w, h]`
+    :return: the bounding box as `[x_1, y_1, x_2, y_2]`
+    """
+    bbox = torch.tensor(bbox)
+    x_c, y_c, w, h = bbox.unbind(dim=-1)
+    b = [(x_c - 0.5 * w), (y_c - 0.5 * h), (x_c + 0.5 * w), (y_c + 0.5 * h)]
+    return torch.stack(b, dim=-1)
+
+
 def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=None):
     if (prob is not None and bboxes is None) or (prob is None and bboxes is not None):
         raise ValueError("Only one among confidence scores and bounding boxes was provided. "
@@ -109,6 +123,7 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=Non
         else:
             raise ValueError("Could not detect display mode based on arguments provided.")
 
+        (x_1, y_1, x_2, y_2) = __convert_bbox([x_1, y_1, x_2, y_2])
         ax.add_patch(plt.Rectangle((x_1, y_1), x_2 - x_1, y_2 - y_1,
                                    fill=False, color=c, linewidth=2))
         ax.text(x_1, y_1, text, fontsize=8, color="white").set_bbox(dict(facecolor=c, linewidth=0, alpha=0.8))
@@ -119,6 +134,6 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=Non
 
 
 if __name__ == '__main__':
-    video_name = 'MOT17-02-DPM'
+    video_name = 'MOT17-10-SDP'
     show_video_tracking(video_name, waitKeys=True)
     # show_video_detections(video_name, waitKeys=True, people_only=False)

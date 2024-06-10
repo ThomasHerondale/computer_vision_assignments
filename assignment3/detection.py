@@ -39,18 +39,6 @@ __model = torch.hub.load(
 warnings.filterwarnings('default')
 
 
-def __convert_bbox(bbox: torch.Tensor) -> torch.Tensor:
-    """
-    Converts the bounding box specified by its center coordinates and its size to
-    a bbox expressed by the coordinates of its vertices.
-    :param bbox: bounding box as `[c_x, c_y, w, h]`
-    :return: the bounding box as `[x_1, y_1, x_2, y_2]`
-    """
-    x_c, y_c, w, h = bbox.unbind(dim=1)
-    b = [(x_c - 0.5 * w), (y_c - 0.5 * h), (x_c + 0.5 * w), (y_c + 0.5 * h)]
-    return torch.stack(b, dim=1)
-
-
 def __rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tensor:
     """
     Converts the bbox specified by its center coordinates in [0, 1] and its size to
@@ -60,7 +48,6 @@ def __rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tenso
     :return: the bounding box as `[x_1, y_1, x_2, y_2]` in image scale
     """
     img_w, img_h = img_size
-    bbox = __convert_bbox(bbox)
     bbox = bbox * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
     return bbox
 
