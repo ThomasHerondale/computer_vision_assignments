@@ -58,7 +58,8 @@ def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=No
 
 def compute_report():
 
-    command = ("python scripts/run_mot_challenge.py --BENCHMARK MOT17 --SPLIT_TO_EVAL train --TRACKERS_TO_EVAL "
+    command = ("python TrackEval/scripts/run_mot_challenge.py --BENCHMARK MOT17 --SPLIT_TO_EVAL train "
+               "--TRACKERS_TO_EVAL"
                "MPNTrack --METRICS HOTA CLEAR Identity VACE --USE_PARALLEL False --NUM_PARALLEL_CORES 1")
 
     try:
