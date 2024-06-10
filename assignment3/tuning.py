@@ -11,7 +11,7 @@ from Tracking_Algorithm import TrackingAlgorithm
 from detection import get_detections
 from utils import get_dir_path
 from alive_progress import alive_bar
-
+from report import save_results, compute_report
 
 class TrackerTuner:
     def __init__(self, multi_metric_criteria='mean'):
@@ -90,15 +90,16 @@ class TrackerTuner:
                         title=f'[{video_counter}, {combination_counter}/{combinations_count}] '
                               f'Tracking video frames...        '       # spaces to gracefully align bars
                 ) as bar:
-                    for fname, (conf_scores, bboxes) in zip(fnames, detections):
+                    for frame_id, fname, (conf_scores, bboxes) in zip(range(1, len(fnames) + 1), fnames, detections):
                         img_path = os.path.join(seq_path, fname)
                         with PIL.Image.open(img_path) as img:
-                            res = self.__current_tracker.update(bboxes.numpy(), conf_scores, np.array(img))
+                            trackers = self.__current_tracker.update(bboxes.numpy(), conf_scores, np.array(img))
+                            save_results(video, frame_id, trackers)
                         bar()
 
                 tracking_time = time.perf_counter() - start
 
-                scores = FOR_TEST_get_scores(res)
+                scores = FOR_TEST_get_scores(trackers)
                 score = self._aggregate_scores(scores)
                 self._save_scores(comb, detection_time, tracking_time, scores)
 
@@ -165,9 +166,5 @@ if __name__ == '__main__':
     tuner = TrackerTuner()
     tuner.register_hyperparameter('detector__conf_threshold', [2, 5])
     tuner.register_hyperparameter('detector__iou_threshold', [3, 9])
-    tuner.tune(['MOT17-05-SDP', 'MOT17-09-DPM', 'MOT17-04-DPM'])
-    for params in tuner.results:
-        print(params)
-    print(tuner.best_aggregated_score)
-    print(tuner.best_scores)
-    print(tuner.best_params)
+    tuner.tune(['MOT17-05-SDP'])
+    compute_report()
