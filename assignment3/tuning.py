@@ -1,4 +1,5 @@
 import os
+import time
 import random
 from itertools import product
 from typing import List, Any
@@ -66,6 +67,9 @@ class TrackerTuner:
             fnames = os.listdir(seq_path)
 
             for comb in self.param_combinations():
+                # keep track of detection time
+                start = time.perf_counter()
+
                 # setup hyperparameters for detector and tracker
                 self._setup(video_counter, comb)
 
@@ -76,6 +80,10 @@ class TrackerTuner:
                                              progress_bar_prefix=f'[{video_counter}, '
                                                                  f'{combination_counter}/{combinations_count}]'
                                              )]
+
+                detection_time = time.perf_counter() - start
+                # keep track of tracking time
+                start = time.perf_counter()
 
                 with alive_bar(
                         total=len(detections),
@@ -88,12 +96,16 @@ class TrackerTuner:
                             res = self.__current_tracker.update(bboxes.numpy(), np.array(img))
                         bar()
 
+                tracking_time = time.perf_counter() - start
+
                 scores = FOR_TEST_get_scores(res)
                 score = self._aggregate_scores(scores)
-                self._save_scores(comb, scores)
+                self._save_scores(comb, detection_time, tracking_time, scores)
 
                 print(f'\t[{video_counter}, {combination_counter}/{combinations_count}] Hyperparameters: {comb}\n'
-                      f'\t[{video_counter}, {combination_counter}/{combinations_count}] Score: {score:.4f}')
+                      f'\t[{video_counter}, {combination_counter}/{combinations_count}] Score: {score:.4f}\n'
+                      f'\t[{video_counter}, {combination_counter}/{combinations_count}] '
+                      f'Elapsed time: {detection_time + tracking_time:.2f}s')
 
                 combination_counter += 1
 
@@ -124,7 +136,7 @@ class TrackerTuner:
         # sort results by aggregate score
         self.__tuning_results.sort(key=lambda res: self._aggregate_scores(res[1]), reverse=True)
 
-    def _save_scores(self, params, scores):
+    def _save_scores(self, params, detection_time, tracking_time, scores):
         # aggregate scores and check if they're currently the best we have
         aggregated_score = self._aggregate_scores(scores)
         if self.best_aggregated_score is None or aggregated_score > self.best_aggregated_score:
@@ -132,7 +144,7 @@ class TrackerTuner:
             self.best_scores = scores
             self.best_params = params
 
-        self.__tuning_results += [(params, scores)]
+        self.__tuning_results += [(detection_time, tracking_time, params, scores)]
 
     def _aggregate_scores(self, scores):
         if self.__criteria == 'mean':
