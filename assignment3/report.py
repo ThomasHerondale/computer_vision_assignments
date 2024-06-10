@@ -1,7 +1,7 @@
 import csv
 import os
 import numpy as np
-from Tracker import Tracker
+import subprocess
 
 
 def _bbox_converter(bbox):
@@ -48,5 +48,23 @@ def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=No
 
     file_path = os.path.join(directory_path, video_name)
 
+    # se il file già esiste lo elimino
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
     for trackers in trackers:
         _write_csv_file(file_path, frame, trackers, x, y, z, challenge)
+
+
+def compute_report():
+
+    command = ("python scripts/run_mot_challenge.py --BENCHMARK MOT17 --SPLIT_TO_EVAL train --TRACKERS_TO_EVAL "
+               "MPNTrack --METRICS HOTA CLEAR Identity VACE --USE_PARALLEL False --NUM_PARALLEL_CORES 1")
+
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(e.output)
+        print(e.stderr)
+
