@@ -32,17 +32,13 @@ def compute_cost(detection_point, tracking_point) -> float:
     d_x = tracking_point[0] - detection_point[0]
     d_y = tracking_point[1] - detection_point[1]
     d = float(math.sqrt((d_x * d_x) + (d_y * d_y)))
-    """
-    if d > threshold:
-        d = np.inf # float('inf')
-    """
+
     return d
 
 
 def calculate_cost_matrix(detection_list, track_list) -> np.ndarray:
 
     cost_matrix = np.zeros((len(track_list), len(detection_list)), np.float32)
-    # print("Matrice di soli zeri: ", cost_matrix)
 
     for trak_i, track in enumerate(track_list):
         for det_i, detection in enumerate(detection_list):
@@ -67,7 +63,6 @@ def matching(detections, tracks, threshold: int):
     cost_matrix = calculate_cost_matrix(converted_detections, converted_tracks)
 
     row_ind, col_ind = linear_sum_assignment(cost_matrix)
-    #print("Matrice dei costi\n", cost_matrix)
 
     match_list, unmatched_tracks, unmatched_detections = [], [], []
 
