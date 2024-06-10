@@ -90,10 +90,10 @@ class TrackerTuner:
                         title=f'[{video_counter}, {combination_counter}/{combinations_count}] '
                               f'Tracking video frames...        '       # spaces to gracefully align bars
                 ) as bar:
-                    for fname, (_, bboxes) in zip(fnames, detections):
+                    for fname, (conf_scores, bboxes) in zip(fnames, detections):
                         img_path = os.path.join(seq_path, fname)
                         with PIL.Image.open(img_path) as img:
-                            res = self.__current_tracker.update(bboxes.numpy(), np.array(img))
+                            res = self.__current_tracker.update(bboxes.numpy(), conf_scores, np.array(img))
                         bar()
 
                 tracking_time = time.perf_counter() - start
@@ -134,7 +134,7 @@ class TrackerTuner:
         self.__curent_tracker = None
 
         # sort results by aggregate score
-        self.__tuning_results.sort(key=lambda res: self._aggregate_scores(res[1]), reverse=True)
+        self.__tuning_results.sort(key=lambda res: self._aggregate_scores(res[3]), reverse=True)
 
     def _save_scores(self, params, detection_time, tracking_time, scores):
         # aggregate scores and check if they're currently the best we have
