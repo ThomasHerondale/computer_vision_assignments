@@ -66,6 +66,6 @@ class TrackingAlgorithm:
         result = []
         for tracker in self.trackers:
             if tracker.counter_last_update == 0 and tracker.counter_updates >= self.initialize_age:
-                result.append(np.concatenate((tracker.current_position, [tracker.id])))
+                result.append(np.concatenate((tracker.current_position, [tracker.id], tracker.color)))
 
         return np.array(result)

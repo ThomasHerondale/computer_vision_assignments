@@ -1,6 +1,7 @@
 import logging
 import os
 import warnings
+from contextlib import nullcontext
 from typing import Tuple, Optional, Dict, Any
 
 import torch
@@ -95,28 +96,40 @@ def __detect(model, img, transform=None, confidence_threshold=0.5, people_only=T
     return torch.tensor(confidence_scores, dtype=torch.float32), torch.tensor(bboxes, dtype=torch.float32)
 
 
-def __detect_video(video_dir_path: str, people_only: bool, progress_bar_prefix, conf_threshold):
+def __detect_video(video_dir_path: str, people_only: bool, show_progress_bar, progress_bar_prefix, conf_threshold):
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     fnames = os.listdir(seq_path)
     cache_fpath = os.path.join(video_dir_path, __get_next_cache_fname(video_dir_path))
     __write_cache_header(cache_fpath, {'conf_threshold': conf_threshold})
-    for frame_id, fname in alive_it(
-            zip(range(1, len(fnames) + 1), fnames),
+
+    if show_progress_bar:
+        progress_bar = alive_bar(
             total=len(fnames),
-            title=f'{progress_bar_prefix} Detecting video frames...'):
-        img = Image.open(os.path.join(seq_path + '/', fname))
-        conf_scores, bboxes = __detect(__model, img, confidence_threshold=conf_threshold, people_only=people_only)
-        if people_only:
-            __cache_detections(
-                cache_fpath,
-                frame_id,
-                conf_scores,
-                bboxes,
-            )
-        yield conf_scores, bboxes
+            title=f'{progress_bar_prefix} Detecting video frames...'
+        )
+    else:
+        progress_bar = nullcontext()
+
+    with progress_bar as bar:
+        for frame_id, fname in zip(range(1, len(fnames) + 1), fnames):
+            img = Image.open(os.path.join(seq_path + '/', fname))
+            conf_scores, bboxes = __detect(__model,
+                                           img,
+                                           confidence_threshold=conf_threshold,
+                                           people_only=people_only)
+            if people_only:
+                __cache_detections(
+                    cache_fpath,
+                    frame_id,
+                    conf_scores,
+                    bboxes,
+                )
+            if show_progress_bar:
+                bar()
+            yield conf_scores, bboxes
 
 
-def __load_detections(video_dir_path, cache_fname, progress_bar_prefix):
+def __load_detections(video_dir_path, cache_fname, show_progress_bar, progress_bar_prefix):
     seq_path = os.path.join(video_dir_path + '/', 'img1')
     frame_count = len(os.listdir(seq_path))
 
@@ -132,7 +145,14 @@ def __load_detections(video_dir_path, cache_fname, progress_bar_prefix):
                           f'only contains detections for {last_frame} frames.')
         current_frame = 1
         current_conf, current_bboxes = [], []
-        with alive_bar(total=len(lines), title=f'{progress_bar_prefix} Reading detections cache file...') as bar:
+
+        if show_progress_bar:
+            progress_bar = alive_bar(total=len(lines),
+                                     title=f'{progress_bar_prefix} Reading detections cache file...')
+        else:
+            progress_bar = nullcontext()
+
+        with progress_bar as bar:
             for line in lines:
                 frame_id, x_1, y_1, x_2, y_2, conf_score = line.strip().split(',')
                 # check if we finished reading all the detections for this frame
@@ -149,7 +169,8 @@ def __load_detections(video_dir_path, cache_fname, progress_bar_prefix):
                 else:
                     current_conf += [float(conf_score)]
                     current_bboxes += [[float(x_1), float(y_1), float(x_2), float(y_2)]]
-                bar()
+                if show_progress_bar:
+                    bar()
 
 
 def __write_cache_header(cache_fpath, hyperparameters):
@@ -207,6 +228,7 @@ def __get_cache_fnames(video_dir_path):
 def get_detections(
         video_name: str,
         people_only: bool,
+        show_progress_bar: bool = True,
         progress_bar_prefix: str = '',
         conf_threshold: float = 0.5):
     """
@@ -216,6 +238,7 @@ def get_detections(
     :param video_name: the name of the video to be detected
     :param people_only: whether to instruct the tracker to detect only people in the video or not. Note that
      this parameter will be ignored if a cache file exists, since caching is only allowed for people detections
+    :param show_progress_bar: whether to show a progress bar in terminal
     :param progress_bar_prefix: a prefix to display before the title of the progress bar
     :param conf_threshold: the confidence threshold that will be used to suppress detections for which
      the detector is too unsure. Note that this parameter will be ignored if a cache file exists
@@ -240,6 +263,7 @@ def get_detections(
         return __load_detections(
             video_dir_path,
             cache_fname,
+            show_progress_bar=show_progress_bar,
             progress_bar_prefix=progress_bar_prefix,
         )
     else:
@@ -248,6 +272,7 @@ def get_detections(
         return __detect_video(
             video_dir_path,
             people_only=people_only,
+            show_progress_bar=show_progress_bar,
             progress_bar_prefix=progress_bar_prefix,
             conf_threshold=conf_threshold
         )

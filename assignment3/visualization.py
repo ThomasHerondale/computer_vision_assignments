@@ -34,7 +34,10 @@ def show_video_tracking(video_name: str, waitKeys: bool = False, bufferize: bool
 
     fig = plt.figure()
     fig.canvas.mpl_connect('close_event', lambda event: exit())
-    for img_path, (conf_scores, bboxes_scaled) in zip(fnames, get_detections(video_name, people_only=True)):
+    for img_path, (conf_scores, bboxes_scaled) in zip(fnames,
+                                                      get_detections(video_name,
+                                                                     people_only=True,
+                                                                     show_progress_bar=False)):
         img = Image.open(os.path.join(seq_path, img_path))
 
         # Converto il tensore in un array numpy per comodità
@@ -68,7 +71,9 @@ def show_video_detections(video_name: str,
 
     fig = plt.figure()
     fig.canvas.mpl_connect('close_event', lambda event: exit())
-    for (conf, bboxes), fname in zip(get_detections(video_name, people_only=people_only), fnames):
+    for (conf, bboxes), fname in zip(get_detections(video_name,
+                                                    people_only=people_only,
+                                                    show_progress_bar=False), fnames):
         img = Image.open(os.path.join(seq_path, fname))
         __plot_results(img, waitKeys, prob=conf, bboxes=bboxes)
 
@@ -107,17 +112,16 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes: torch.Tensor = None, tr
     ax = plt.gca()
 
     if mode == 'trackers':
-        it = zip(tracked_people, __COLORS * 100)
+        it = tracked_people
     else:
         assert bboxes is not None
         it = zip(prob, enumerate(bboxes), __COLORS * 100)
 
     for e in it:
         if mode == 'trackers':
-            tracked_person, c = e
             # vi odio per avere usato gli ndarray dentro il tracker
             # devo convertire e riconvertire le cose ottocento volte T.T
-            bbox, bbox_id = torch.tensor(tracked_person[:4]), tracked_person[-1]
+            bbox, bbox_id, c = torch.tensor(e[:4]), e[4], e[5:]
             text = f'ID: {bbox_id:.0f}'
         elif mode == 'detections':
             p, bbox, c = e
