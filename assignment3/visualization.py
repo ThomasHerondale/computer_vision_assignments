@@ -43,7 +43,7 @@ def show_video_tracking(video_name: str, waitKeys: bool = False, bufferize: bool
         # Converto il tensore in un array numpy per comodità
         detections = bboxes_scaled.numpy()
 
-        tracked_people = tracker.update(detections, np.array(img))
+        tracked_people = tracker.update(detections, conf_scores, np.array(img))
 
         # Visualizza i risultati del tracking
         __plot_results(img, waitKeys, tracked_people=tracked_people)

@@ -38,7 +38,7 @@ class TrackingAlgorithm:
         self.count += 1
         return self.count
 
-    def update(self, detections, img) -> np.ndarray:
+    def update(self, detections, conf_scores, img) -> np.ndarray:
         """
         Update all the information about the new detections and the corrispondece with the trackers,
         the unmatched detections and the unmatched trackers.
@@ -61,7 +61,7 @@ class TrackingAlgorithm:
             self.trackers[tracker_num].update(detections[detection_num], img)
 
         for i in unmatched_detections:
-            self.trackers.append(Tracker(detections[i, :], self.new_id(), img))
+            self.trackers.append(Tracker(detections[i, :], self.new_id(), conf_scores[i], img))
 
         result = []
         for tracker in self.trackers:

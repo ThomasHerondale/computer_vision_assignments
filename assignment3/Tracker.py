@@ -3,7 +3,7 @@ import random as rnd
 
 
 class Tracker:
-    def __init__(self, bbox, label, img):
+    def __init__(self, bbox, conf_score, label, img):
         """
         Initialize a tracker object
         :param bbox: np.ndarry containing bounding box coordinates [x1, y1, x2, y2]
@@ -14,6 +14,7 @@ class Tracker:
         self.counter_last_update = 0
         self.id = label
         self.bbox = bbox
+        self.conf_score = conf_score
         self.bbox_difference = np.array([0, 0, 0, 0], dtype=np.float32)
         self.descriptor = self.compute_descriptor(img, bbox)
         self.color = rnd.choice(self.__COLORS)
