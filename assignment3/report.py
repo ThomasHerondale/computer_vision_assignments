@@ -25,7 +25,7 @@ def _write_csv_file(path: str, frame: int, tracker: np.ndarray, x, y, z, challen
     with open(path, 'a', newline='') as file_csv:
         writer = csv.writer(file_csv)
 
-        id = tracker.id
+        id = tracker[4]
         bbox = tracker[0:4]
         confidence = tracker[8]
         converted_bbox = _bbox_converter(bbox)
