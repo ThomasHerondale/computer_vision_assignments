@@ -80,13 +80,12 @@ def __convert_bbox(bbox) -> torch.Tensor:
     :param bbox: bounding box as `[c_x, c_y, w, h]`
     :return: the bounding box as `[x_1, y_1, x_2, y_2]`
     """
-    bbox = torch.tensor(bbox)
     x_c, y_c, w, h = bbox.unbind(dim=-1)
     b = [(x_c - 0.5 * w), (y_c - 0.5 * h), (x_c + 0.5 * w), (y_c + 0.5 * h)]
     return torch.stack(b, dim=-1)
 
 
-def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=None):
+def __plot_results(pil_img, waitKeys, prob=None, bboxes: torch.Tensor = None, tracked_people=None):
     if (prob is not None and bboxes is None) or (prob is None and bboxes is not None):
         raise ValueError("Only one among confidence scores and bounding boxes was provided. "
                          "Please provide both or use another argument combination.")
@@ -107,23 +106,31 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=Non
     plt.imshow(pil_img)
     ax = plt.gca()
 
-    it = zip(tracked_people, __COLORS * 100) if mode == 'trackers' \
-        else zip(prob, bboxes.tolist(), __COLORS * 100)
+    if mode == 'trackers':
+        it = zip(tracked_people, __COLORS * 100)
+    else:
+        assert bboxes is not None
+        it = zip(prob, enumerate(bboxes), __COLORS * 100)
+
     for e in it:
         if mode == 'trackers':
-            (x_1, y_1, x_2, y_2, bbox_id), c = e
+            tracked_person, c = e
+            # vi odio per avere usato gli ndarray dentro il tracker
+            # devo convertire e riconvertire le cose ottocento volte T.T
+            bbox, bbox_id = torch.tensor(tracked_person[:4]), tracked_person[-1]
             text = f'ID: {bbox_id:.0f}'
         elif mode == 'detections':
-            p, (x_1, y_1, x_2, y_2), c = e
+            p, bbox, c = e
             cl = p.argmax()
             text = f'{__CLASSES[cl]}: {p[cl]:0.2f}'
         elif mode == 'detections_people_only':
-            p, (x_1, y_1, x_2, y_2), c = e
+            # _ is needed to ignore indices of enumerate()
+            p, (_, bbox), c = e
             text = f'{p:0.2f}'
         else:
             raise ValueError("Could not detect display mode based on arguments provided.")
 
-        (x_1, y_1, x_2, y_2) = __convert_bbox([x_1, y_1, x_2, y_2])
+        (x_1, y_1, x_2, y_2) = __convert_bbox(bbox)
         ax.add_patch(plt.Rectangle((x_1, y_1), x_2 - x_1, y_2 - y_1,
                                    fill=False, color=c, linewidth=2))
         ax.text(x_1, y_1, text, fontsize=8, color="white").set_bbox(dict(facecolor=c, linewidth=0, alpha=0.8))
@@ -136,4 +143,4 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes=None, tracked_people=Non
 if __name__ == '__main__':
     video_name = 'MOT17-10-SDP'
     show_video_tracking(video_name, waitKeys=True)
-    # show_video_detections(video_name, waitKeys=True, people_only=False)
+    #show_video_detections(video_name, waitKeys=True, people_only=True)
