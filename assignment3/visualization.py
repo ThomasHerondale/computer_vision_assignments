@@ -7,7 +7,7 @@ from PIL import Image
 
 from Tracking_Algorithm import TrackingAlgorithm
 from assignment3.utils import get_dir_path
-from detection import get_detections
+from detection import get_detections, __CLASSES
 
 # colors for visualization
 __COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],

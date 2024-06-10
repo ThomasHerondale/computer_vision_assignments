@@ -5,6 +5,7 @@ from matching import matching
 
 
 class TrackingAlgorithm:
+    """Implementation of the tracking algorithm."""
     def __init__(self,
                  max_age=5,
                  initialize_age=5,
@@ -13,6 +14,15 @@ class TrackingAlgorithm:
                  appearance_metric=None,
                  **kwargs
                  ):
+        """
+        Initialize the tracking algorithm.
+        :param max_age: Maximum number of frames for which a tracker can survive without being detected
+        :param initialize_age: Number of frames after which a tracker can actually be considered a new target
+        :param spatial_metric:
+        :param spatial_metric_threshold:
+        :param appearance_metric:
+        :param kwargs:
+        """
         self.max_age = max_age
         self.initialize_age = initialize_age
         self.trackers = []
@@ -21,16 +31,17 @@ class TrackingAlgorithm:
         self.spatial_metric = spatial_metric
         self.appearance_metric = appearance_metric
 
-    def new_id(self):
+    def new_id(self) -> int:
         """
-        Genera l'ID da associare al nuovo target
+        Generate a new tracker id.
         """
         self.count += 1
         return self.count
 
-    def update(self, detections, img):
+    def update(self, detections, img) -> np.ndarray:
         """
-        Aggiorna le informazioni sui trackers
+        Update all the information about the new detections and the corrispondece with the trackers,
+        the unmatched detections and the unmatched trackers.
         """
         # Creo una lista contenente i miei target ancora "in vita"
         self.trackers = [tracker for tracker in self.trackers if tracker.counter_last_update <= self.max_age]
