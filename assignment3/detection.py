@@ -42,10 +42,10 @@ warnings.filterwarnings('default')
 def __rescale_bbox(bbox: torch.Tensor, img_size: Tuple[int, int]) -> torch.Tensor:
     """
     Converts the bbox specified by its center coordinates in [0, 1] and its size to
-    a bbox expressed by the coordinates of its vertices rescaled with respect to the image size.
+    a bbox expressed with respect to the image size.
     :param bbox: the bounding box as `[c_x, c_y, w, h]`, where c_x, c_y are in [0, 1]
     :param img_size: the size of the image
-    :return: the bounding box as `[x_1, y_1, x_2, y_2]` in image scale
+    :return: the bounding box in image scale
     """
     img_w, img_h = img_size
     bbox = bbox * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32)
