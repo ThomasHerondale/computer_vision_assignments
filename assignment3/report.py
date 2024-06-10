@@ -17,7 +17,7 @@ def _bbox_converter(bbox):
     return bbox
 
 
-def _write_csv_file(path: str, frame: int, tracker: Tracker, x, y, z, challenge):
+def _write_csv_file(path: str, frame: int, tracker: np.ndarray, x, y, z, challenge):
 
     if challenge == '2D':
         x, y, z = -1, -1, -1
@@ -26,8 +26,8 @@ def _write_csv_file(path: str, frame: int, tracker: Tracker, x, y, z, challenge)
         writer = csv.writer(file_csv)
 
         id = tracker.id
-        bbox = tracker.bbox
-        confidence = tracker.conf_score
+        bbox = tracker[0:4]
+        confidence = tracker[8]
         converted_bbox = _bbox_converter(bbox)
         bb_left = converted_bbox[0]
         bb_top = converted_bbox[1]
