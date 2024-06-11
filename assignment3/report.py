@@ -1,6 +1,10 @@
 import csv
 import os
+import warnings
+from typing import Dict, Any
+
 import numpy as np
+import itertools as it
 import subprocess
 
 
@@ -69,3 +73,62 @@ def compute_report():
         print(e.output)
         print(e.stderr)
 
+
+def __read_score_file(fname, video) -> dict[str, float]:
+    with open(fname, 'r') as f:
+        # read header row to get list of scores
+        header = f.readline()
+        f1_metrics = header.strip().split()[2:]
+
+        # skip 2nd header line
+        # _ = f.readline()
+
+        while True:
+            line = f.readline()
+
+            # check if we finished reading this table
+            if not line or line == '\n':
+                break
+
+            name, *scores = line.strip().split()
+
+            # skip COMBINED score
+            if name == 'COMBINED':
+                continue
+
+            # check if we are only reading the rows of our interests
+            assert name.startswith('MOT17-')
+
+            if name == video:
+                f1_scores = scores
+
+            # skip useless line
+            f.readline()
+
+        # read header row to get list of scores
+        header = f.readline()
+        f2_metrics = header.strip().split()[2:]
+
+        for line in f.readlines():
+            name, *scores = line.strip().split()
+
+            # skip COMBINED score
+            if name == 'COMBINED':
+                continue
+
+            # check if we are only reading the rows of our interests
+            assert name.startswith('MOT17-')
+
+            if name == video:
+                f2_scores = scores
+
+            # skip useless line
+            f.readline()
+
+            # check if we finished reading this table
+            if line.isspace():
+                break
+
+        score_data = it.chain.from_iterable([zip(f1_metrics, f1_scores), zip(f2_metrics, f2_scores)])
+
+        return {k: v for k, v in score_data}
