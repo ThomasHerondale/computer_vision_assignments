@@ -1,7 +1,7 @@
 import csv
 import os
 import warnings
-from typing import Dict, Any
+from typing import Dict, Any, Iterable, Tuple
 
 import numpy as np
 import itertools as it
@@ -66,7 +66,7 @@ def _write_result(file_path, output: str):
         file.write(output)
 
 
-def compute_report(video):
+def compute_report(video) -> dict[str, float]:
     command = ("python TrackEval/scripts/run_mot_challenge.py --USE_PARALLEL False --METRICS HOTA CLEAR "
                "--TRACKERS_TO_EVAL my_trackers ")
 
@@ -117,7 +117,7 @@ def __read_score_file(fname, video) -> dict[str, float]:
             assert name.startswith('MOT17-')
 
             if name == video:
-                f1_scores = scores
+                f1_scores = [float(s) for s in scores]
 
             # skip useless line
             f.readline()
@@ -141,7 +141,7 @@ def __read_score_file(fname, video) -> dict[str, float]:
             assert name.startswith('MOT17-')
 
             if name == video:
-                f2_scores = scores
+                f2_scores = [float(s) for s in scores]
 
             # skip useless line
             f.readline()
@@ -150,6 +150,7 @@ def __read_score_file(fname, video) -> dict[str, float]:
             if line.isspace():
                 break
 
-        score_data = it.chain.from_iterable([zip(f1_metrics, f1_scores), zip(f2_metrics, f2_scores)])
+        score_data: Iterable[Tuple[str, float]] = it.chain.from_iterable([zip(f1_metrics, f1_scores),
+                                                                          zip(f2_metrics, f2_scores)])
 
         return {k: v for k, v in score_data}
