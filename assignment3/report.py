@@ -34,7 +34,7 @@ def _write_csv_file(path: str, frame: int, tracker: np.ndarray, x, y, z, challen
         bb_width = converted_bbox[2]
         bb_height = converted_bbox[3]
 
-        writer.writerow([frame, id, bb_left, bb_top, bb_width, bb_height, confidence, x, y, z])
+        writer.writerow([frame, int(id), bb_left, bb_top, bb_width, bb_height, confidence, x, y, z])
 
 
 def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=None, z=None, challenge='2D'):
@@ -56,15 +56,28 @@ def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=No
         _write_csv_file(file_path, frame, trackers, x, y, z, challenge)
 
 
+def _write_result(output: str):
+
+    directory_path = 'TrackEval/data/trackers/mot_challenge/MOT17-train/my_trackers/data'
+    file_path = os.path.join(directory_path, "output.txt")
+
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    with open(file_path, 'w') as file:
+        file.write(output)
+
+
 def compute_report():
 
-    command = ("python TrackEval/scripts/run_mot_challenge.py --BENCHMARK MOT17 --SPLIT_TO_EVAL train "
+    command = ("python TrackEval/scripts/run_mot_challenge.py --USE_PARALLEL False --METRICS HOTA CLEAR "
                "--TRACKERS_TO_EVAL"
-               "my_trackers --METRICS HOTA CLEAR Identity VACE --USE_PARALLEL False --NUM_PARALLEL_CORES 1")
+               "my_trackers ")
 
     try:
         result = subprocess.run(command, check=True, capture_output=True, text=True)
         print(result.stdout)
+        _write_result(result.stdout)
     except subprocess.CalledProcessError as e:
         print(e.output)
         print(e.stderr)
