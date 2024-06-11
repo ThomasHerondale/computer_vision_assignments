@@ -22,7 +22,6 @@ def _bbox_converter(bbox):
 
 
 def _write_csv_file(path: str, frame: int, tracker: np.ndarray, x, y, z, challenge):
-
     if challenge == '2D':
         x, y, z = -1, -1, -1
 
@@ -42,7 +41,6 @@ def _write_csv_file(path: str, frame: int, tracker: np.ndarray, x, y, z, challen
 
 
 def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=None, z=None, challenge='2D'):
-
     directory_path = 'TrackEval/data/trackers/mot_challenge/MOT17-train/my_trackers/data'
 
     try:
@@ -60,11 +58,7 @@ def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=No
         _write_csv_file(file_path, frame, trackers, x, y, z, challenge)
 
 
-def _write_result(output: str):
-
-    directory_path = 'TrackEval/data/trackers/mot_challenge/MOT17-train/my_trackers/data'
-    file_path = os.path.join(directory_path, "output.txt")
-
+def _write_result(file_path, output: str):
     if os.path.exists(file_path):
         os.remove(file_path)
 
@@ -72,16 +66,19 @@ def _write_result(output: str):
         file.write(output)
 
 
-def compute_report():
-
+def compute_report(video):
     command = ("python TrackEval/scripts/run_mot_challenge.py --USE_PARALLEL False --METRICS HOTA CLEAR "
-               "--TRACKERS_TO_EVAL"
-               "my_trackers ")
+               "--TRACKERS_TO_EVAL my_trackers ")
 
     try:
         result = subprocess.run(command, check=True, capture_output=True, text=True)
-        print(result.stdout)
-        _write_result(result.stdout)
+
+        directory_path = 'TrackEval/data/trackers/mot_challenge/MOT17-train/my_trackers/data'
+        file_path = os.path.join(directory_path, "output.txt")
+
+        _write_result(file_path, result.stdout)
+        return __read_score_file(file_path, video)
+
     except subprocess.CalledProcessError as e:
         print(e.output)
         print(e.stderr)
@@ -89,6 +86,13 @@ def compute_report():
 
 def __read_score_file(fname, video) -> dict[str, float]:
     with open(fname, 'r') as f:
+        # skip lines until start of the tables
+        while True:
+            line = f.readline()
+            if line.startswith('All sequences for my_trackers finished in'):
+                f.readline()
+                break
+
         # read header row to get list of scores
         header = f.readline()
         f1_metrics = header.strip().split()[2:]
@@ -123,6 +127,10 @@ def __read_score_file(fname, video) -> dict[str, float]:
         f2_metrics = header.strip().split()[2:]
 
         for line in f.readlines():
+            # check if we finished reading this table
+            if not line or line == '\n':
+                break
+
             name, *scores = line.strip().split()
 
             # skip COMBINED score

@@ -56,59 +56,60 @@ class TrackerTuner:
 
         combinations_count = len(self.param_combinations())
 
-        for video in videos:
+        for (video_ctr, video), (comb_ctr, comb) in product(enumerate(videos),
+                                                            enumerate(self.param_combinations())):
             # reset parameter combinations counter
             combination_counter = 1
-            print(f'Beginning detection of video {video_counter}/{len(videos)}')
+            # make counters start from 1
+            comb_ctr += 1
+            video_ctr += 1
+            print(f'Beginning detection of video {video_ctr}/{len(videos)}')
 
             # get frame list
             video_dir_path = get_dir_path(video)
             seq_path = os.path.join(video_dir_path + '/', 'img1')
             fnames = os.listdir(seq_path)
 
-            for comb in self.param_combinations():
-                # keep track of detection time
-                start = time.perf_counter()
+            # keep track of detection time
+            start = time.perf_counter()
 
-                # setup hyperparameters for detector and tracker
-                self._setup(video_counter, comb)
+            # setup hyperparameters for detector and tracker
+            self._setup(video_counter, comb)
 
-                # work detections generator until its end
-                detections = [d for d in
-                              get_detections(video,
-                                             people_only=True,
-                                             progress_bar_prefix=f'[{video_counter}, '
-                                                                 f'{combination_counter}/{combinations_count}]'
-                                             )]
+            # work detections generator until its end
+            detections = [d for d in
+                          get_detections(video,
+                                         people_only=True,
+                                         progress_bar_prefix=f'[{video_ctr}, {comb_ctr}/{combinations_count}]')]
 
-                detection_time = time.perf_counter() - start
-                # keep track of tracking time
-                start = time.perf_counter()
+            detection_time = time.perf_counter() - start
+            # keep track of tracking time
+            start = time.perf_counter()
 
-                with alive_bar(
-                        total=len(detections),
-                        title=f'[{video_counter}, {combination_counter}/{combinations_count}] '
-                              f'Tracking video frames...        '       # spaces to gracefully align bars
-                ) as bar:
-                    for frame_id, fname, (conf_scores, bboxes) in zip(range(1, len(fnames) + 1), fnames, detections):
-                        img_path = os.path.join(seq_path, fname)
-                        with PIL.Image.open(img_path) as img:
-                            trackers = self.__current_tracker.update(bboxes.numpy(), conf_scores, np.array(img))
-                            save_results(video, frame_id, trackers)
-                        bar()
+            with alive_bar(
+                    total=len(detections),
+                    title=f'[{video_ctr}, {comb_ctr}/{combinations_count}] '
+                          f'Tracking video frames...        '       # spaces to gracefully align bars
+            ) as bar:
+                for frame_id, fname, (conf_scores, bboxes) in zip(range(1, len(fnames) + 1), fnames, detections):
+                    img_path = os.path.join(seq_path, fname)
+                    with PIL.Image.open(img_path) as img:
+                        trackers = self.__current_tracker.update(bboxes.numpy(), conf_scores, np.array(img))
+                        save_results(video, frame_id, trackers)
+                    bar()
 
-                tracking_time = time.perf_counter() - start
+            tracking_time = time.perf_counter() - start
 
-                scores = FOR_TEST_get_scores(trackers)
-                score = self._aggregate_scores(scores)
-                self._save_scores(comb, detection_time, tracking_time, scores)
+            scores = FOR_TEST_get_scores(trackers)
+            score = self._aggregate_scores(scores)
+            self._save_scores(comb, detection_time, tracking_time, scores)
 
-                print(f'\t[{video_counter}, {combination_counter}/{combinations_count}] Hyperparameters: {comb}\n'
-                      f'\t[{video_counter}, {combination_counter}/{combinations_count}] Score: {score:.4f}\n'
-                      f'\t[{video_counter}, {combination_counter}/{combinations_count}] '
-                      f'Elapsed time: {detection_time + tracking_time:.2f}s')
+            print(f'\t[{video_ctr}, {comb_ctr}/{combinations_count}] Hyperparameters: {comb}\n'
+                  f'\t[{video_ctr}, {comb_ctr}/{combinations_count}] Score: {score:.4f}\n'
+                  f'\t[{video_ctr}, {comb_ctr}/{combinations_count}] '
+                  f'Elapsed time: {detection_time + tracking_time:.2f}s')
 
-                combination_counter += 1
+            combination_counter += 1
 
             video_counter += 1
 
@@ -164,7 +165,7 @@ def FOR_TEST_get_scores(res):
 
 if __name__ == '__main__':
     tuner = TrackerTuner()
-    tuner.register_hyperparameter('detector__conf_threshold', [2, 5])
-    tuner.register_hyperparameter('detector__iou_threshold', [3, 9])
-    tuner.tune(['MOT17-05-SDP'])
-    compute_report()
+    tuner.register_hyperparameter('detector__conf_threshold', [2])
+    video = 'MOT17-05-SDP'
+    tuner.tune([video])
+    print(compute_report(video))
