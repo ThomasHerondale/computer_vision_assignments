@@ -7,22 +7,6 @@ import torch
 from detection import get_detections
 
 
-def convert_bbx(bbox):
-    """
-    Converts bounding box from form [x1, y1, x2, y2] to [x_c, y_c, area, aspect_ratio]
-    :param bbox: list of [x1, y1, x2, y2]
-    :return: list of [x_c, y_c, area, aspect_ratio]
-    """
-    w = bbox[2] - bbox[0]
-    h = bbox[3] - bbox[1]
-    area = w * h
-    aspect_ratio = w / h
-    x_c = bbox[0] + w / 2
-    y_c = bbox[1] + h / 2
-
-    return np.array([x_c, y_c, area, aspect_ratio], dtype=np.float32)
-
-
 def compute_cost(detection_point, tracking_point) -> float:
     """
     Function to compute the cost of linking two points. This cost is calculated as euclidian distance
@@ -48,6 +32,7 @@ def calculate_cost_matrix(detection_list, track_list) -> np.ndarray:
             cost_matrix[trak_i, det_i] = cost
     return cost_matrix
 
+
 def compute_descriptor_hog(img, bbox):
     """
     Compute the HOG descriptor of the object
@@ -63,6 +48,8 @@ def compute_descriptor_hog(img, bbox):
     features = exposure.rescale_intensity(features, in_range=(0, 10))
 
     return features
+
+
 def matching(img, detections, tracks, threshold: int):
     """
     :param tracks: lista di oggetti alla quale è gia stato assegnato un id
@@ -73,10 +60,7 @@ def matching(img, detections, tracks, threshold: int):
     if len(detect_ind) == 0 or len(track_ind) == 0:
         return [], track_ind, detect_ind
 
-    converted_detections = [convert_bbx(d) for d in detections]
-    converted_tracks = [convert_bbx(t) for t in tracks]
-
-    cost_matrix = calculate_cost_matrix(converted_detections, converted_tracks)
+    cost_matrix = calculate_cost_matrix(detections, tracks)
 
     row_ind, col_ind = linear_sum_assignment(cost_matrix)
 
