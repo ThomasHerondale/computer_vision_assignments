@@ -61,7 +61,10 @@ class TrackingAlgorithm:
             self.trackers[tracker_num].update(detections[detection_num], conf_scores[detection_num], img)
 
         for i in unmatched_detections:
-            self.trackers.append(Tracker(detections[i, :], self.new_id(), conf_scores[i], img))
+            self.trackers.append(Tracker(bbox=detections[i, :],
+                                         conf_score=conf_scores[i],
+                                         label=self.new_id(),
+                                         img=img))
 
         result = []
         for tracker in self.trackers:
