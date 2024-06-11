@@ -7,7 +7,8 @@ import torch
 from detection import get_detections
 
 
-def compute_cost(detection_point, tracking_point) -> float:
+#  the first version
+def compute_euclidian_distance(detection_point, tracking_point) -> float:
     """
     Function to compute the cost of linking two points. This cost is calculated as euclidian distance
     between the two points.
@@ -22,23 +23,27 @@ def compute_cost(detection_point, tracking_point) -> float:
     return d
 
 
-def calculate_cost_matrix(detection_list, track_list) -> np.ndarray:
-
-    cost_matrix = np.zeros((len(track_list), len(detection_list)), np.float32)
-
-    for trak_i, track in enumerate(track_list):
-        for det_i, detection in enumerate(detection_list):
-            cost = compute_cost(detection, track)
-            cost_matrix[trak_i, det_i] = cost
-    return cost_matrix
-
-
-def compute_descriptor_hog(img, bbox):
+def _convert_bbox(bbox) -> np.ndarray:
     """
-    Compute the HOG descriptor of the object
+    convert_bbox coverte a bbox from form [x_c, y_c, w, h] into numpy array [x, y, w, h]
+    :param bbox: list of [x_c, y_c, w, h]
+    :return numpy array [x, y, w, h]
     """
-    x1, y1, x2, y2 = bbox.astype(int)
-    cropped_image = img[y1:y2, x1:x2]
+    x_c, y_c, w, h = bbox
+    x = float(x_c - w / 2) # forse è meglio convertire tutto a intero ?
+    y = float(y_c - h / 2)
+    return np.array([x, y, w, h], dtype=float)
+
+
+def _compute_descriptor_hog(frame, bbox_converted: np.ndarray):
+    """
+    Compute the HOG descriptor of the object.
+    :param frame: current frame of image
+    :param bbox_converted: a simple np array in form [x, y, w, h]
+    :return features: features of cropped image that include pedestrian
+    """
+    x1, y1, w, h = bbox_converted # estraggo gli elementi di una bbox
+    cropped_image = frame[y1:(y1 + h), x1:(x1 + h)] # ritaglio l'imagine
 
     # Calcola l'HOG dell'immagine ritagliata
     features, hog_image = hog(cropped_image, orientations=9, pixels_per_cell=(8, 8),
@@ -48,6 +53,27 @@ def compute_descriptor_hog(img, bbox):
     features = exposure.rescale_intensity(features, in_range=(0, 10))
 
     return features
+
+
+def _compute_cosine_similarrity(a, b):
+    """
+    _compute_cosine_similarrity calculate the cosine of angle alpha of two vector, a and b, and then it subtract to one
+    :param a: bbox's features of current frame
+    :param b: bbox's features of previous frame
+    """
+    cosine = np.dot(a,b) / (np.linalg.norm(a) * np.linalg.norm(b))
+    return 1 - cosine
+
+
+def calculate_cost_matrix(detection_list, track_list) -> np.ndarray:
+
+    cost_matrix = np.zeros((len(track_list), len(detection_list)), np.float32)
+
+    for trak_i, track in enumerate(track_list):
+        for det_i, detection in enumerate(detection_list):
+            cost = compute_euclidian_distance(detection, track)
+            cost_matrix[trak_i, det_i] = cost
+    return cost_matrix
 
 
 def matching(img, detections, tracks, threshold: int):
