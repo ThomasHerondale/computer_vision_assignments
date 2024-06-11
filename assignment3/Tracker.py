@@ -1,6 +1,7 @@
 import numpy as np
+from skimage.feature import hog
+from skimage import exposure
 import random as rnd
-
 
 class Tracker:
     def __init__(self, bbox, conf_score, label, img):
@@ -43,18 +44,27 @@ class Tracker:
         self.bbox_difference = bbox - self.bbox
         self.bbox = bbox
         self.conf_score = conf_score
-        self.descriptor = self.compute_descriptor(img, bbox)
+        self.descriptor = self.compute_descriptor_hog(img, bbox)
         self.counter_updates += 1
         self.counter_last_update = 0
 
     @staticmethod
-    def compute_descriptor(img, bbox):
+    def compute_descriptor_hog(img, bbox):
         """
-        Compute the descriptor of the object by a simple mean of color
+        Compute the HOG descriptor of the object
         """
-        x_1, y_1, x_2, y_2 = bbox.astype(int)
-        cropped_image = img[y_1:y_2, x_1:x_2]
-        return np.mean(cropped_image, axis=(0, 1))
+        x1, y1, x2, y2 = bbox.astype(int)
+        cropped_image = img[y1:y2, x1:x2]
+
+        # Calcola l'HOG dell'immagine ritagliata
+        features, hog_image = hog(cropped_image, orientations=9, pixels_per_cell=(8, 8),
+                                  cells_per_block=(2, 2), visualize=True, multichannel=True)
+
+        # Normalizzo l'HOG
+        features = exposure.rescale_intensity(features, in_range=(0, 10))
+
+        return features
+
 
     @property
     def current_position(self):
