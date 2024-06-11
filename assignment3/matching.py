@@ -1,6 +1,8 @@
 import math
 from scipy.optimize import linear_sum_assignment
 import numpy as np
+from skimage.feature import hog
+from skimage import exposure
 import torch
 from detection import get_detections
 
@@ -46,8 +48,22 @@ def calculate_cost_matrix(detection_list, track_list) -> np.ndarray:
             cost_matrix[trak_i, det_i] = cost
     return cost_matrix
 
+def compute_descriptor_hog(img, bbox):
+    """
+    Compute the HOG descriptor of the object
+    """
+    x1, y1, x2, y2 = bbox.astype(int)
+    cropped_image = img[y1:y2, x1:x2]
 
-def matching(detections, tracks, threshold: int):
+    # Calcola l'HOG dell'immagine ritagliata
+    features, hog_image = hog(cropped_image, orientations=9, pixels_per_cell=(8, 8),
+                              cells_per_block=(2, 2), visualize=True, multichannel=True)
+
+    # Normalizzo l'HOG
+    features = exposure.rescale_intensity(features, in_range=(0, 10))
+
+    return features
+def matching(img, detections, tracks, threshold: int):
     """
     :param tracks: lista di oggetti alla quale è gia stato assegnato un id
     """

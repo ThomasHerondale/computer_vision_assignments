@@ -52,6 +52,7 @@ class TrackingAlgorithm:
         # Il metodo compare compare_boxes l'ho preso paro paro online, ma sarebbe quello che cipo deve implementare
         #matched, unmatched_detections, unmatched_trackers = compare_boxes(detections, bboxes_trackers)
         matched, unmatched_trackers, unmatched_detections = matching(
+            img,
             detections,
             bboxes_trackers,
             threshold=self.metric_dist_threshold
