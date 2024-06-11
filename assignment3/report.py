@@ -50,12 +50,15 @@ def save_results(video_name: str, frame: int, trackers: np.ndarray, x=None, y=No
 
     file_path = os.path.join(directory_path, f"{video_name}.txt")
 
-    # se il file già esiste lo elimino
-    if os.path.exists(file_path):
-        os.remove(file_path)
-
     for trackers in trackers:
         _write_csv_file(file_path, frame, trackers, x, y, z, challenge)
+
+
+def clear_video_results(video_name: str):
+    directory_path = 'TrackEval/data/trackers/mot_challenge/MOT17-train/my_trackers/data'
+    file_path = os.path.join(directory_path, f"{video_name}.txt")
+    if os.path.exists(file_path):
+        os.remove(file_path)
 
 
 def _write_result(file_path, output: str):

@@ -11,7 +11,7 @@ from tabulate import tabulate
 
 from Tracking_Algorithm import TrackingAlgorithm
 from detection import get_detections
-from report import save_results, compute_report
+from report import save_results, compute_report, clear_video_results
 from utils import get_dir_path
 
 
@@ -99,6 +99,9 @@ class TrackerTuner:
             # keep track of tracking time
             start = time.perf_counter()
 
+            # clear results files
+            clear_video_results(video)
+
             with alive_bar(
                     total=len(detections),
                     title=f'[{video_ctr}, {comb_ctr}/{combinations_count}] '
@@ -159,7 +162,7 @@ class TrackerTuner:
         )
 
         # setup tracking parameters
-        tracking_alg_params = self.__get_params_by_target(param_comb, 'tracking')
+        tracking_alg_params = self.__get_params_by_target(param_comb, 'tracker')
         self.__current_tracker = TrackingAlgorithm(**tracking_alg_params)
 
     def _cleanup(self):
@@ -174,8 +177,10 @@ class TrackerTuner:
 
 
 if __name__ == '__main__':
-    tuner = TrackerTuner()
-    tuner.register_hyperparameter('detector__conf_threshold', [2])
+    tuner = TrackerTuner(results_fnames='tuning_results.json')
+    tuner.register_hyperparameter('tracker__spatial_metric_threshold', [90, 120, 140])
+    tuner.register_hyperparameter('tracker__max_age', [3, 5, 10])
+    tuner.register_hyperparameter('tracker__initialize_age', [3, 5, 10])
     video = 'MOT17-05-SDP'
-    tuner.tune([video])
+    #tuner.tune([video])
     tuner.display_results()
