@@ -59,7 +59,7 @@ def __detect(model, img, transform=None, confidence_threshold=0.5, people_only=T
         transform = T.Compose([
             T.Resize(800),
             T.ToTensor(),
-            # todo: normalize?
+            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
 
     img_size = img.size
