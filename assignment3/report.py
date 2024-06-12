@@ -14,8 +14,8 @@ def _bbox_converter(bbox):
     :param bbox: a list of [x_c, y_c, w, h]
     :return: bbox: a list of [x_l, y_h, w, h]
     """
-    new_x = bbox[0] - bbox[2] / 2
-    new_y = bbox[1] - bbox[3] / 2
+    new_x = int(bbox[0] - bbox[2] / 2)
+    new_y = int(bbox[1] - bbox[3] / 2)
     bbox[0] = new_x
     bbox[1] = new_y
     return bbox
