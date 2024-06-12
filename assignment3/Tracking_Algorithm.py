@@ -12,6 +12,7 @@ class TrackingAlgorithm:
                  spatial_metric='euclidean',
                  spatial_metric_threshold=30,
                  appearance_metric=None,
+                 lambda_1=0.5,
                  **kwargs
                  ):
         """
@@ -30,6 +31,8 @@ class TrackingAlgorithm:
         self.metric_dist_threshold = spatial_metric_threshold
         self.spatial_metric = spatial_metric
         self.appearance_metric = appearance_metric
+        self.lambda_1 = lambda_1
+        self.lambda_2 = 1 - self.lambda_1
 
     def new_id(self) -> int:
         """
@@ -56,8 +59,8 @@ class TrackingAlgorithm:
             detections,
             features_trackers,
             bboxes_trackers,
-            lambda_1=0.0, # TODO: iperparametro
-            lambda_2=1.0,
+            lambda_1=self.lambda_1,
+            lambda_2=self.lambda_2,
             threshold=self.metric_dist_threshold
         )
 
