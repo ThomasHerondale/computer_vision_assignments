@@ -48,13 +48,16 @@ class TrackingAlgorithm:
 
         # Creo una lista contenente le bounding box dei miei target precedentemente selezionati
         bboxes_trackers = np.array([tracker.current_position for tracker in self.trackers])
-
+        features_trackers = [tracker.descriptor for tracker in self.trackers]
         # Il metodo compare compare_boxes l'ho preso paro paro online, ma sarebbe quello che cipo deve implementare
         #matched, unmatched_detections, unmatched_trackers = compare_boxes(detections, bboxes_trackers)
         matched, unmatched_trackers, unmatched_detections = matching(
             img,
             detections,
+            features_trackers,
             bboxes_trackers,
+            lambda_1=0.0, # TODO: iperparametro
+            lambda_2=1.0,
             threshold=self.metric_dist_threshold
         )
 
