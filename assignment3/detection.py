@@ -98,7 +98,7 @@ def __detect(model, img, transform=None, confidence_threshold=0.5, people_only=T
 
 def __detect_video(video_dir_path: str, people_only: bool, show_progress_bar, progress_bar_prefix, conf_threshold):
     seq_path = os.path.join(video_dir_path + '/', 'img1')
-    fnames = os.listdir(seq_path)
+    fnames = sorted(os.listdir(seq_path))
     cache_fpath = os.path.join(video_dir_path, __get_next_cache_fname(video_dir_path))
     __write_cache_header(cache_fpath, {'conf_threshold': conf_threshold})
 
@@ -279,5 +279,5 @@ def get_detections(
 
 
 if __name__ == '__main__':
-    for _ in get_detections('MOT17-05-SDP', people_only=True, conf_threshold=0.5):
+    for _ in get_detections('MOT17-13-SDP', people_only=True, conf_threshold=0.5):
         pass
