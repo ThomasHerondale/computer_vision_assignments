@@ -1,5 +1,6 @@
 import os
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -8,6 +9,7 @@ from PIL import Image
 from Tracking_Algorithm import TrackingAlgorithm
 from assignment3.utils import get_dir_path
 from detection import get_detections, CLASSES
+from report import _bbox_converter
 
 # colors for visualization
 __COLORS = [[0.000, 0.447, 0.741], [0.850, 0.325, 0.098], [0.929, 0.694, 0.125],
@@ -78,6 +80,54 @@ def show_video_detections(video_name: str,
         __plot_results(img, waitKeys, prob=conf, bboxes=bboxes)
 
 
+def save_video_detections(video_name: str, output_path: str):
+    video_dir_path = get_dir_path(video_name)
+    seq_path = os.path.join(video_dir_path + '/', 'img1')
+    fnames = os.listdir(seq_path)
+
+    # get frame size
+    img = cv2.imread(os.path.join(seq_path, fnames[0]))
+    h, w = img.shape[:2]
+    cc = cv2.VideoWriter.fourcc(*'mp4v')
+    video_writer = cv2.VideoWriter(output_path, cc, 30.0, (w, h))
+
+    tracker = TrackingAlgorithm(
+        spatial_metric_threshold=120,
+        max_age=10,
+        initialize_age=7,
+        lambda_1=0.2
+    )
+
+    plt.figure()
+    ax = plt.gca()
+    for (conf, bboxes), fname in zip(get_detections(video_name,
+                                                    people_only=True,
+                                                    show_progress_bar=False), fnames):
+
+        img = cv2.imread(os.path.join(seq_path, fname))
+
+        # Converto il tensore in un array numpy per comodità
+        detections = bboxes.numpy()
+
+        tracked_people = tracker.update(detections, conf, np.array(img))
+        plt.clf()
+
+        for e in tracked_people:
+            bbox, bbox_id, c = torch.tensor(e[:4]), e[4], e[5:]
+            text = f'ID: {bbox_id:.0f}'
+            color = c * 255
+
+            (left, top, width, height) = _bbox_converter(bbox)
+            right = left + width
+            bottom = top + height
+            cv2.rectangle(img, (int(left), int(top)), (int(right), int(bottom)), color, 4)
+            cv2.putText(img, text, (int(left), int(top - 10)), cv2.FONT_HERSHEY_PLAIN, 2, color)
+
+        video_writer.write(img)
+
+    video_writer.release()
+
+
 def __convert_bbox(bbox) -> torch.Tensor:
     """
     Converts the bounding box specified by its center coordinates and its size to
@@ -145,6 +195,7 @@ def __plot_results(pil_img, waitKeys, prob=None, bboxes: torch.Tensor = None, tr
 
 
 if __name__ == '__main__':
-    video_name = 'MOT17-10-SDP'
-    show_video_tracking(video_name, waitKeys=True)
+    video_name = 'MOT17-10-DPM'
+    #show_video_tracking(video_name, waitKeys=True)
     #show_video_detections(video_name, waitKeys=True, people_only=True)
+    save_video_detections(video_name, 'test.mp4')
